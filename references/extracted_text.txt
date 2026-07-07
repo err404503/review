@@ -1,0 +1,854 @@
+Total pages: 18
+================================================================================
+
+----- Page 1 -----
+arXiv:1304.1188v2  [cs.DS]  11 Apr 2013
+How to Approximate A Set
+Without Knowing Its Size In Advance
+Rasmus Pagh∗ Gil Segev† Udi Wieder‡
+Abstract
+The dynamic approximate membership problem asks to represent a s et S of size n, whose ele-
+ments are provided in an on-line fashion, supporting membership que ries without false negatives
+and with a false positive rate at most ǫ. That is, the membership algorithm must be correct on
+each x∈ S, and may err with probability at most ǫ on each x /∈ S.
+We study a well-motivated, yet insuﬃciently explored, variant of this problem where the size
+n of the set is not known in advance. Existing optimal approximate mem bership data structures
+require that the size is known in advance, but in many practical scen arios this is not a realistic
+assumption. Moreover, even if the eventual size n of the set is known in advance, it is desirable
+to have the smallest possible space usage also when the current num ber of inserted elements is
+smaller than n. Our contribution consists of the following results:
+• We show a super-linear gap between the space complexity when the s ize is known in advance
+and the space complexity when the size is not known in advance. When the size is known
+in advance, it is well-known that Θ( n log(1/ǫ)) bits of space are necessary and suﬃcient
+(Bloom ’70, Carter et al. ’78). However, when the size is not known in a dvance, we prove
+that at least (1 − o(1))n log(1/ǫ) + Ω( n log log n) bits of space must be used. In particular,
+the average number of bits per element must depend on the size of t he set.
+• We show that our space lower bound is tight, and can even be matche d by a highly eﬃcient
+data structure. We present a data structure that uses (1 + o(1))n log(1/ǫ) + O(n log log n)
+bits of space for approximating any set of any size n, without having to know n in advance.
+Our data structure supports membership queries in constant time in the worst case with
+high probability, and supports insertions in expected amortized con stant time. Moreover,
+it can be “de-amortized” to support also insertions in constant time in the worst case with
+high probability by only increasing its space usage to O(n log(1/ǫ) + n log log n) bits.
+Keywords: Data structures, approximate membership, lower bounds, upper bounds.
+∗ IT University of Copenhagen. Email: pagh@itu.dk.
+†Stanford University, Stanford, CA 94305, USA. Email: segev@stanford.edu.
+‡Microsoft Research Silicon Valley, Mountain View, CA 94043 , USA. Email: uwieder@microsoft.com.
+
+----- Page 2 -----
+1 Introduction
+Dictionaries play a fundamental role in the design and analy sis of algorithms, enabling representation
+of any given set S while supporting membership queries. For sets of size n that are taken from a
+universe U of size u, any dictionary must clearly use at least log
+( u
+n
+)
+= n log(u/n) + Θ( n) bits
+of space
+1. Whereas dictionaries oﬀer exact representations of sets, in many realistic scenarios it is
+desirable to trade exact representations with approximate ones in order to reduce space consumption.
+This was observed already by Bloom [ Blo70], whose classical design of a Bloom Filter provides a
+simple and practical alternative to dictionaries.
+Bloom’s data structure solves the problem known these days a s the approximate membership
+problem. This problem asks to represent any given set S of size n while supporting membership
+queries without false negatives, and with a false positive r ate at most ǫ. That is, the membership
+algorithm must be correct on any x∈ S, and may err with probability at most ǫ on any x∈ U\ S
+(where the probability is taken over the randomness used by t he data structure). The approximate
+membership problem can be considered in the static setting where the set is speciﬁed in advance, or
+in the dynamic setting where the elements of the set are speciﬁed one by one i n an on-line fashion.
+Bloom’s data structure uses only log e· n log(1/ǫ) bits of space (and solves the problem even
+in the dynamic setting), and Carter et al. [ CFG+78] proved that this is essentially optimal: Any
+approximate membership data structure must use at least n log(1/ǫ) bits of space, even in the static
+setting. Over the years a long line of research has shown how t o design approximate membership
+data structures that are essentially optimal in both their s pace utilization and eﬃciency of their
+operations. We refer the reader to the survey of Broder and Mi tzenmacher [ BM03] for various
+applications for approximation membership data structure s, and to Section 1.2 for an overview of
+the known results.
+Approximating sets of unknown sizes. The vast majority of existing approximate member-
+ship data structures require that the size n of the set S to be approximated will be known in
+advance. In many practical scenarios, however, it is unreal istic to assume that the size is known in
+advance [
+GWC+06]. Moreover, even if the eventual size n of the set is known in advance, it is de-
+sirable to have the smallest possible space usage also when t he current number of inserted elements
+is smaller than n.
+In this paper we study the well motivated, yet insuﬃciently e xplored, variant of the dynamic
+approximate membership problem where the size n of the set is not known in advance. We refer to
+this problem as approximate membership for sets of unknown sizes . This problem is parameterized by
+u∈ N and 0 < ǫ < 1, and asks to design a data structure oﬀering three algorithm s: Initialize, Insert,
+and Membership. Upon initialization via the Initialize algorithm, the data structure is presented
+with a sequence of elements that are taken from a universe U of size u. The elements are speciﬁed
+in an on-line fashion, and each element is processed using th e Insert algorithm that updates the
+internal state of the data structure. The Membership algorithm should satisfy the following two
+requirements:
+• No false negatives: For any n≤ u, S⊆ U of size n, and x∈ S, the Membership algorithm
+always outputs Yes on x after the elements of S are processed by the Insert algorithm.
+• F alse positive rate at most ǫ: For any n≤ u, S⊆ U of size n, and x /∈ S, the Membership
+algorithm outputs Yes on x with probability at most ǫ after the elements of S are processed by
+the Insert algorithm (where the probability is taken over the randomne ss of the data structure).
+1Throughout this paper all logarithms are to the base 2.
+1
+
+----- Page 3 -----
+Gradually-increasing space consumption. For the approximate membership problem when
+the size n of the set is known in advance, it is well-known that Θ( n log(1/ǫ)) bits of space suﬃce
+even in the dynamic setting, and are essential even in the sta tic setting (recall that a Bloom ﬁlter
+uses O(n log(1/ǫ)) bits which is asymptotically optimal). That is, the avera ge number of bits for
+representing each element is Θ(log(1 /ǫ)) which is independent of the size of the set.
+In this light, a natural question is whether this is also the c ase when the size n is not known
+in advance, and the data structure is required to work for set s of any size n≤ u. That is, we
+ask the following question: Is there a dynamic approximate m embership data structure that uses
+space O(n log(1/ǫ)) for representing any set S of any size n≤ u? Somewhat surprisingly, this
+question was so far addressed only from a practical perspect ive, and has not been investigated from
+a foundational perspective. Moreover, the data structures we could ﬁnd in the literature [ ABP+07,
+HKL08, GWC+06, GWC+10, WJZ+11, WJZ+13] use space Ω( n log n) bits (and query time Ω(log n)
+or Ω(log(1 /ǫ))). These solution are somewhat naive from an algorithmic p oint of view, and provide
+poor asymptotic bounds.
+1.1 Our Contributions
+We present a lower bound and matching upper bounds on the spac e complexity of approximate
+membership for sets of unknown sizes. Our lower bound shows t hat if the size n of the size of
+the sets to be approximated is not known in advance, then it is not possible to use an average
+of O(log(1/ǫ)) bits per elements as in the standard case. Speciﬁcally, we show a super-linear gap
+between the space complexity when n is known in advance and the space complexity when n is not
+known in advance. We prove the following theorem:
+Theorem 1.1 (Lower bound – informal) . Any data structure for approximate membership for sets
+of unknown sizes with false positive rate ǫ must use space (1− o(1))n log(1/ǫ) + Ω( n log log n) bits
+after some number of insertions n > u δ, for any arbitrary small constant 0 < δ < 1.
+In particular, Theorem
+1.1 states that the average number of bits per element must be at l east
+(1− o(1)) log(1/ǫ) + Ω(log log n) at some point in time while processing a not-too-short sequ ence.
+We emphasize that in many practical scenarios (see [ BM03]) a typical false positive rate is a not-
+too-small constant (e.g., ǫ = 1/10). For such a range of parameters our lower bound states tha t the
+average number of bits per element must be Ω(log log n) as opposed to constant.
+We then show that our lower bound is asymptotically tight by p resenting two constructions
+with a space usage that matches our lower bound up to additive lower order terms. We prove the
+following theorem:
+Theorem 1.2 (Upper bound – informal) . There exists a data structure for approximate membership
+for sets of unknown sizes with false positive rate ǫ that uses space (1+ o(1))n log(1/ǫ)+ O(n log log n)
+bits for any sequence of n > u δ insertions, for any arbitrary small constant 0 < δ < 1.
+Our ﬁrst construction (which can be viewed as a warm-up) is qu ite natural and uses a sequence
+of dynamic approximate membership data structures of geome trically-increasing sizes. It supports
+insertions in expected amortized constant time, but member ship queries are supported in time
+O(log n). Our second construction is signiﬁcantly more subtle, sho wing that in fact our space
+lower bound can be matched by a highly eﬃcient data structure supporting membership queries
+in constant time in the worst case with high probability (whi le still enjoying expected amortized
+constant insertion time as in our ﬁrst construction). Moreo ver, we show that it can be “de-amortized”
+to support also insertions in constant time in the worst case with high probability by increasing its
+space usage from (1 + o(1))n log(1/ǫ) + O(n log log n) bits to O(n log(1/ǫ) + n log log n) bits (with a
+2
+
+----- Page 4 -----
+rather small leading constant). We refer the reader to Secti on 1.3 for a high-level overview of the
+main ideas underlying our lower bound and constructions.
+Finally, we note that in both our lower bound and constructio ns we consider approximate rep-
+resentation of sets whose size n is polynomially related to the universe size u (i.e., n > u δ for any
+arbitrary small constant 0 < δ < 1). This is rather standard for exact or approximate represe n-
+tation of sets as one can always apply a universe reduction vi a simple universal hashing given any
+polynomial upper bound on the number of elements.
+1.2 Related work
+Bloom ﬁlters. The elegant data structure proposed by Bloom [
+Blo70] naturally allows dynamic
+insertions, but uses space that is a factor log e≈ 1.44 larger than the information theoretic lower
+bound of n log(1/ǫ) bits [ CFG+78]. Another thing to notice is that Bloom ﬁlters do not allow
+deletions from S, as setting any bit to 0 could result in false negatives.
+Deletion queries can be supported by using counting Bloom ﬁlters [ FCA+00], at the cost of
+an Ω(log log n) factor increase in space usage. Deletions are supported in the sense that the data
+structure will work correctly if no attempt is made to delete a false positive, but by deﬁnition it is
+not possible to prevent such deletions. Cohen and Matias [ CM03] present a way of decreasing the
+space overhead to O(n) bits, and generalize approximate membership to approxima te multiplicity
+in a multiset.
+Dictionary-based approximate membership. Already in 1978, Carter et al. [
+CFG+78] had
+presented a technique that would lead to a similar result. Th ey observed that maintaining the
+multiset h(S), where h : [ u]→ [n/ǫ] is a universal hash function [ CW79], yields a solution with
+space n log(1/ǫ) + O(n) bits if the set h(S) is stored in space close to the information theoretic
+bound of log
+( n/ǫ+n
+n
+)
+bits. If deletions are not needed it suﬃces to store the set of distinct hash
+values h(S). This dynamic set can be stored succinctly with all operati ons taking O(1) time with
+high probability [ ANS10]. Dynamic multisets, and thus deletions, can be supported v ia a reduction
+to the standard membership problem [ PPR05], at the cost of amortized expected update bounds.
+A more practical alternative was explored in [ BMP+06].
+Separation of on-line and oﬀ-line space requirements. Dietzfelbinger and Pagh [ DP08]
+showed how to approach the n log(1/ǫ) space lower bound up to a o(n) term using query time
+ω(log(1/ǫ)), in the case where ǫ is an integer power of 2. Independently, Porat [ Por09] achieved the
+same result with constant query time. Recently, Bellazougu i and Venturini [ BV13] showed how to
+eliminate the restriction on ǫ, still maintaining constant query time.
+Lovett and Porat [ LP10] showed that these results for the static case do not extend t o the
+situation where dynamic updates are allowed: An overhead of Ω( n/ log(1/ǫ)) bits is required. The
+lower bound holds even if there are no queries before the end o f the insertion sequence. In other
+words, this result implies that to build an approximate memb ership data structure for a key set
+given as a data stream, it does not suﬃce to use space close to t he static size lower bound.
+Dynamic space usage. The setting where space must depend on the current size of the set is
+more demanding from an upper bound perspective. In fact, the techniques for this problem that
+we could ﬁnd in the literature [ ABP+07, HKL08, GWC+06, GWC+10, WJZ+11, WJZ+13] lead to
+Ω(log n) or Ω(log(1 /ǫ)) query time, and a space overhead of Ω( n log n) bits. These data structures
+share the idea of working with a sequence of approximate memb ership data structures, all of which
+are queried. If geometrically increasing capacity is chose n this means that there will be Ω(log n) such
+3
+
+----- Page 5 -----
+data structures (of course, if we have some initial capacity n0 this number decreases to O(log(n/n0)),
+which might be ﬁne in practical situations – but it is not asym ptotically optimal). A consequence
+of working with a series of approximations is that the sum of c orresponding false positive rates
+ǫ1, ǫ2, . . . must converge to ǫ. For example, In [ ABP+07] it is suggested to achieve this by letting ǫi
+decrease geometrically with i. This implies that ǫi = n−Ω( i), yielding Ω( n log n) space usage.
+Dynamic perfect hashing and retrieval. An approach to approximate membership in the static
+case is to store a perfect hash function that maps keys inject ively to {1, . . . , n}, and then store a
+signature of log(1 /ǫ) bits for each key in an array, placed according to the perfec t hash function.
+More generally, a dynamic data structure for retrieval (e.g . the Bloomier ﬁlters of [CKR+04]) allows
+us to make a dynamic approximate membership data structure. As shown in [ MPP05] both these
+problems require space Θ( n log log n) in the on-line setting. However, the upper bounds have a ﬁxe d
+space usage (up to constant factors), and hence do not allow t he kind of result we obtain.
+1.3 Overview of Our Contributions
+In this section we provide a high-level overview of the main i deas underlying our lower bound and
+constructions.
+The lower bound: F rom Approximate membership to compression. When dealing with
+dictionaries (i.e., with exact membership as opposed to approximate membership), it is quite simple
+to deal with the fact that the size of the set S to be stored is not known in advance. Speciﬁcally,
+at any point in time a dictionary stores a description of the s et S of elements that were inserted
+so far. Then, upon inserting a new element x∈ U\ S this description can simply be updated to
+that of S′ = S∪{ x}. The dictionary can describe S and then S′ using the minimal, information-
+theoretic, number of bits. Moreover, there are even time-eﬃ cient solutions that gradually increase
+the size of the dictionary while oﬀering constant-time opera tions in the worst case together with
+an asymptotically-optimal space consumption at any point i n time (see, for example, the work of
+Dietzfelbinger and auf der Heide [
+DMadH90]).
+When dealing with approximate membership, however, it seems signiﬁcantly more challengi ng
+when the size of the set S to be approximated is not known in advance. For simplifying t he following
+discussion we consider here deterministic approximate membership data structures, but note that
+the exact same ideas carry over to randomized ones. Speciﬁca lly, for using asymptotically optimal
+space, an approximate membership data structure cannot aﬀor d to store an exact description of the
+set S of elements that were inserted so far. Instead, any particul ar state of the data structure may
+be used for many sets other than S, and the result of the Membership algorithm must be Yes on any
+element that belongs to the union ˆS of these sets. Upon inserting a new element x∈ U\ S, the
+data structure has to update the description of the current s uperset ˆS to the description of some
+superset ˆS′ of S′ = S∪{ x}. Note, however, that the data structure does not have access to the
+set S, but only to the approximation ˆS containing S. Therefore, it must hold that ˆS⊆ ˆS′ as any
+element of ˆS might have been inserted, and false negatives are not allowe d.
+The main observation underlying our lower bound proof is tha t not only the new superset ˆS′ has
+to be larger than the old one ˆS (as ˆS⊆ ˆS′), but it actually has to be signiﬁcantly larger. That is,
+upon the insertion of an element, the data structure must upd ate its internal state by adding many
+elements to the currently stored superset. This is in contra st to the setting of exact membership
+discussed above, where upon the insertion of an element, a di ctionary can update its internal state
+by adding only the newly added element to the currently store d set. We formalize this observation
+via a compression argument showing that if ˆS′\ ˆS is rather small, then we can “compress” the set S′
+4
+
+----- Page 6 -----
+below the information-theoretic lower bound. We note that t his argument takes into account only
+space utilization, and does not need to make any assumptions on the eﬃciency of the data structure
+in terms of the time complexity of its Insert and Membership algorithms. We refer the reader to
+Section 3 for the proof of our lower bound.
+Construction 1 (warm-up): Geometrically-increasing data structures. Our ﬁrst con-
+struction is quite natural and uses a sequence of dynamic app roximate membership data structures
+of geometrically-increasing sizes. When viewing the seque nce of inserted elements as consecutive
+subsequences, where the ith subsequence consists of 2 i elements, at the beginning of the ith sub-
+sequence we allocate a dynamic approximate membership data structureBi with a false positive
+rate ǫi = Θ( ǫ/i2). The elements of the ith subsequence are processed by Bi. A membership query
+for an element x∈ U is performed by invoking the membership algorithm of each of the existing
+data structures Bi, and reporting Yes if any of them does. Clearly, the construction has no false
+negatives, and its false positive rate is at most ∑ ∞
+i=1 ǫi≤ ǫ.
+By carefully instantiating the underlying Bi’s with existing dynamic approximate membership
+data structures, for any sequence of n insertions the data structure uses only (1 + o(1))n log(1/ǫ) +
+O(n log log n) bits of space, and insertions are performed in expected amo rtized constant time.
+However, membership queries require time Θ(log n) after n insertions, as a separate membership
+query is needed for each of the existing Bi’s.
+2 We refer the reader to Section 4 for more details.
+Construction 2: Constant-time operations. Whereas our ﬁrst construction is somewhat
+naive, our second construction is signiﬁcantly more subtle , supporting membership queries in con-
+stant time in the worst case with high probability (while sti ll enjoying expected amortized constant
+insertion time as in our ﬁrst construction). Moreover, we sh ow that it can be “de-amortized”
+to support also insertions in constant time in the worst case by increasing its space usage from
+(1 + o(1))n log(1/ǫ) + O(n log log n) bits to O(n log(1/ǫ) + n log log n) bits (with a rather small
+leading constant).
+Unlike our ﬁrst construction, this construction consists o f only one data structure at any point
+in time. This data structure is a dynamic dictionary (i.e., a n exact representation of a set) that is
+used for storing a carefully chosen superset of the elements that were inserted so far. For describing
+the main ideas underlying this construction, we again view t he sequence of inserted elements as
+consecutive subsequences, where the ith subsequence consists of 2 i elements. The construction is
+initialized by sampling a function h : U→{ 0, 1}ℓ from a pairwise independent collection of functions,
+where ℓ≥⌈ log(1/ǫ)⌉ + log u + 2 (recall that ǫ is the required false positive rate, and that u is that
+size of the universe of elements).
+The basic idea is that for inserting an element x as part of the ith subsequence, we store in the
+current dictionaryDi the value hi(x) that is deﬁned as the leftmost ℓi =⌈log(1/ǫ)⌉+i+2 bits of h(x).
+At the end of the ith subsequence, we transition from the current dictionary Di to a newly allocated
+dictionaryDi+1, and de-allocate the space used by Di. The transition is performed as follows: As
+Di is a dictionary, we can enumerate all of its stored values, an d for each such value y∈{ 0, 1}ℓi we
+insert both y0∈{ 0, 1}ℓi+1 and y1∈{ 0, 1}ℓi+1 to the new dictionary Di+1. Note that Di stores ℓi-bit
+values, andDi+1 stores ℓi+1-bit values. The key point is that at any point in time there is only one
+dictionaryDi, and therefore any membership query requires executing onl y one such query: Given
+an element x and given that the current dictionary is Di, we execute a membership query for hi(x)
+inDi. Therefore, the time for supporting membership queries is i dentical to that of the underlying
+dictionaries.
+2We note that these Θ(log n) membership queries can be executed in parallel.
+5
+
+----- Page 7 -----
+This approach, however, needs to be reﬁned as the number of st ored values increases too fast.
+To match our lower bound, we would like to argue that each dict ionaryDi stores O(2i) values. This
+is not the case: Each of the 2 j elements that are inserted as part of the jth subsequence, for any
+j < i , “contributes” 2 i−j values toDi, and therefore the number of values stored by Dlog n would be
+O(n log n) instead of O(n).
+We resolve this diﬃculty as follows. For inserting an elemen t x as part of the ith subsequence,
+we store inDi the pair ( hi(x), gi(x)), where hi(x) is deﬁned as the leftmost ℓi =⌈log(1/ǫ)⌉+i+2 bits
+of h(x) (as before), and gi(x) is deﬁned as the next r =⌈log log u⌉ output bits of h(x) (padded with
+the symbol⊥ when less than r such bits are available) 3. The transitioning from Di toDi+1 is now
+performed as follows: For each pair ( y, α1··· αr)∈{ 0, 1}ℓi×{ 0, 1,⊥}r that is stored in Di we insert
+toDi+1 either the pair ( yα1, α2··· αr⊥) if α1̸=⊥ (using yα1 as its key), or the two pairs ( y0, α) and
+(y1, α) if α1 =⊥ (using y0 and y1 as the respective keys). This way, each of the 2 j elements that
+are inserted as part of the jth subsequence, for any j < i , “contributes” only 2 i−j−r values toDi,
+which guarantees that each Di stores only O(2i) values. This, combined with a standard bucketing
+argument, enables us to match our space lower bound of using ( 1 + o(1))n log(1/ǫ) + O(n log log n)
+bits for any sequence of n insertions. Note that this method has no false negatives, an d we show
+that our choice of parameters guarantees that the false posi tive rate is at most ǫ. Moreover, the
+time for supporting membership queries is identical to that of the underlying dictionaries.
+The construction enjoys a good amortized insertion time: Mo st insertions correspond to stan-
+dard insertions for the current Di, while only a small number of insertions require transition ing from
+Di toDi+1. Speciﬁcally, we show that if the underlying dictionaries s upport insertions in expected
+amortize constant time, then so does our construction. More over, we also show that if the under-
+lying dictionaries oﬀer a constant insertion time in the wors t case with high probability, then our
+construction can be modiﬁed to oﬀer constant time insertions in the worst case with high probability.
+This follows the de-amortization technique of Arbitman, Na or and Segev [ ANS09, ANS10], and only
+increases the space usage from (1 + o(1))n log(1/ǫ) +O(n log log n) bits to O(n log(1/ǫ) +n log log n)
+bits (with a rather small leading constant).
+Finally, we also show that our construction can even support deletions, as long as no false
+positives are deleted. We refer the reader to Section 5 for more details.
+1.4 Paper Organization
+The remainder of this paper is organized as follows. In Secti on
+2 we present some essential prelim-
+inaries. In Section 3 we prove our lower bound. In Sections 4 and 5 we present our constructions.
+Finally, in Section 6 we discuss various directions for future research.
+2 Preliminaries
+Notation. For an integer n∈ N we denote by [ n] the set {1, . . . , n}. For a random variable X we
+denote by x← X the process of sampling a value x according to the distribution of X. Similarly,
+for a ﬁnite set S we denote by x← S the process of sampling a value x according to the uniform
+distribution over S.
+Computational model. We consider the unit cost RAM model in which the elements are t aken
+from a universe of size u, and each element can be stored in a single word of length w =⌈log u⌉
+bits. Any operation in the standard instruction set can be ex ecuted in constant time on w-bit
+3Such a pair ( hi(x), gi(x)) is inserted using hi(x) as its key, for enabling constant-time membership queries .
+6
+
+----- Page 8 -----
+operands. This includes addition, subtraction, bitwise Bo olean operations, left and right bit shifts
+by an arbitrary number of positions, and multiplication. Th e unit cost RAM model has been the
+subject of much research, and is considered the standard mod el for analyzing the eﬃciency of data
+structures (see, for example, [ DP08, Hag98, HMP01, Mil99, PP08, RR03] and the references therein).
+k-Wise independent functions. A collection H of functions h : U→ V is k-wise independent
+if for any distinct x1, . . . , xk∈ U and for any y1, . . . , yk∈ V it holds that
+Pr
+h←H
+[h(x1) = y1∧···∧ h(xk) = yk] = 1
+|V|k .
+More generally, a collection H is k-wise δ-dependent if for any distinct x1, . . . , xk∈ U the distribu-
+tion ( h(x1), . . . , h(xk)) where h is sampled from H is δ-close in statistical distance to the uniform
+distribution over U k.
+3 The Lower Bound: From Approximate Membership to Compressi on
+LetD be an approximate membership data structure for sets of unkn own size, for a universe U of
+size u with a false positive rate 0 < ǫ < 1. Our lower bound holds for any such data structure
+that supports insertions and membership queries. We assume D has access to a read-only array of
+random bits at no cost in space, allowing randomized data str uctures. Since we do not limit the
+time complexity of the Membership algorithm, and all possible histories of the data structure can be
+computed using the random bits array, we may without loss of g enerality assume that D answers
+Yes on input x exactly when the current state of the data structure is consi stent with some history
+in which x was inserted using the current array of random bits.
+In this section we prove a lower bound on the space usage of D even if the size of the sets
+to be approximated is known to be in a certain interval (this o nly strengthens the lower bound).
+Speciﬁcally, we prove the following theorem:
+Theorem 3.1. LetD, U , and ǫ be as above, and let n≤ ǫu be suﬃciently large and 1/√
+n≤ α < 1.
+If for any sequence of insertions of any length m such that αn < m < n , the data structure D uses
+at most βm bits of space, then for any integer γ≥ 2 it holds that
+β≥
+(
+1− 1
+γ
+)
+·
+(
+log(1/ǫ) + (1− 9ǫ) log logγ(1/α)− Θ(1)
+)
+.
+In particular, by setting α = 1/√n and γ = 2 (log n)η
+, for some constant 0 < η < 1, we obtain the
+lower bound of (1− o(1))n log(1/ǫ) + Ω( n log log n) bits that is stated in Theorem 1.1. We note that
+asking that the data structure is space eﬃcient only for sequ ences of at least αn elements can be
+viewed as allowing the data structure to process the ﬁrst αn elements in an oﬀ-line manner using
+arbitrary space (which, again, only strengthens the lower b ound). We also note that setting α = 1
+corresponds to the case where the size n of the set is known in advance.
+The proof of Theorem 3.1 consists of two parts. In the ﬁrst part (see Section 3.1) we show
+that it suﬃces to prove the lower bound for deterministic dat a structures, where the probability of
+false positives is taken over the choice of a uniformly sampl ed element (instead of over the internal
+randomness of the data structure). This is a standard averag ing argument showing that one can ﬁx
+the randomness of any randomized data structure, without si gniﬁcantly increasing the false positive
+rate. In the second part (see Section 3.2), we then follow the overview discussed in Section 1.3 for
+proving the lower bound for deterministic data structures.
+7
+
+----- Page 9 -----
+3.1 F rom Randomized to Deterministic Approximate Membership
+For any (suﬃciently long) string r ∈ {0, 1}∗, we denote by Br the deterministic data structure
+obtained by ﬁxing r asB’s internal randomness. In addition, for any sequence S∈ U n of n insertions
+we denote by ˆSr⊆ U the set of all elements on which the Membership algorithm ofBr outputs Yes
+after processing the sequence S. We note that S∈ U n is an ordered sequence of (not necessarily
+distinct) elements, while ˆSr is a set. When we refer to the elements of S we may abuse notation
+and treat S as a set. Note that the fact that there are no false negatives g uarantees that S⊆ ˆSr for
+any r∈{ 0, 1}∗. Finally, for each such r and S deﬁne µ( ˆSr) =| ˆSr|/u, and deﬁne
+Sr,ǫ =
+{
+S∈ U n : µ( ˆSr)≤ 4ǫ
+}
+.
+The following lemma uses an averaging argument and states th at there exists a choice of r∈
+{0, 1}∗ such that µ( ˆSr) is rather small for many sequences S (i.e., that the set Sr,ǫ consists of many
+sequences).
+Lemma 3.2. LetB, u, ǫ and n be as above. Then, there exists a string r∗∈{ 0, 1}∗ such that
+|Sr∗ ,ǫ|≥ un/2.
+Proof. The randomized data structure B has false positive rate at most ǫ, and therefore for any
+sequence S∈ U n it holds that
+Er←{0,1}∗
+[
+µ(| ˆSr|)
+]
+≤ ǫ + n/u≤ 2ǫ.
+By Markov’s inequality it holds that
+Pr
+r←{0,1}∗
+[
+µ(| ˆSr|)≥ 4ǫ
+]
+≤ 1
+2 .
+In particular, there exists an r∗∈{ 0, 1}∗ for which for at least 1 /2 of all the sequences S∈ U n it
+holds that µ(| ˆSr|) < 4ǫ.
+3.2 A Compression Argument for Deterministic Approximate Membership
+Form this point on focus on the deterministic data structure Br∗ , where r∗∈{ 0, 1}∗ is the internal
+random string r∗ provided by Lemma
+3.2. In this part of the proof we show that the data structure
+Br∗ can be used to encode the sequences in a large subset of S =Sr∗ ,ǫ. Since Lemma 3.2 provides
+a lower bound on the cardinality of S, it also provides a lower bound on the length of such an
+encoding.
+Let S be a sequence in S and partition it into consecutive subsequences S = C1, C2, ... such that
+each Ci consists of γi elements, where γ≥ 2 is an integer. We deﬁne Si to be the concatenation
+of the ﬁrst i subsequences, and ni to be its length. In other words Si is the preﬁx of S of length
+ni = ∑
+j≤i γj. Observe that since there are no false negatives, then ˆSi ⊆ ˆSi+1,4 and therefore
+µ( ˆSi)≤ µ( ˆSi+1)≤ 4ǫ for every integer i.
+Lemma 3.3. For any sequence S∈S of length n, there exists an integer i such that |Si|∈ [αn, n]
+and
+µ( ˆSi)− µ( ˆSi−1)≤ 4ǫ
+logγ(1/α)− 2 .
+4Recall that, as stated above, we may without loss of generali ty assume that D answers Yes on input x exactly
+when the current state of the data structure is consistent wi th some history in which x was inserted using the current
+array of random bits.
+8
+
+----- Page 10 -----
+Proof. Let j1 = ⌜logγ(αn(γ− 1) + 1)⌝ and j2 = ⌞logγ(n(γ− 1))⌟. For every j1≤ i≤ j2 it holds
+that ni∈ [αn, n]. Since µ( ˆSj1)≥ 0 and µ( ˆSj2)≤ 4ǫ, and since for all i it holds that µ( ˆSi)≤ µ( ˆSi+1),
+there must be an i∈ [j1, j2] such that
+µ( ˆSi)− µ( ˆSi−1)≤ 4ǫ
+j2− j1
+≤ 4ǫ
+logγ(1/α)− 2 .
+Fix a sequence S of length n, let i be the smallest integer that satisﬁes the condition in Lemma 3.3,
+and let k =|Ci∩ ˆSi−1|. That is, k is the number of elements from the subsequence Ci for which
+the Membership algorithm already answers Yes right before the ith subsequence Ci is processed by
+the Insert algorithm. Observe that since the data structure is determi nistic, k = k(S) is completely
+determined by the sequence S. We are interested in the case k≤ 9ǫ|Ci|. In the next lemma we show
+that for most sequences in S this is indeed the case.
+Lemma 3.4. It holds that
+|{S∈S : k(S)≤ 9ǫ|Ci|}|≥ un
+3 . (3.1)
+Proof. Consider a sequence S which is uniformly sampled in U n one subsequence after the other.
+We emphasize that we sample from U n in order to avoid the dependencies associated with sampling
+fromS. Assume that each preﬁx Sj is associated with an arbitrary set ˆSj with measure at most 4 ǫ.
+If it happens that Sj is a preﬁx of some sequence in S, then ˆSj is indeed deﬁned as before to be the
+set of positive replies. Otherwise ˆSj can be any set in U of measure at most 4 ǫ.
+Now, since the subsequence Cj is sampled uniformly and independently from Sj−1, it holds
+that E[|Cj∩ ˆSj−1|≤ 4ǫ|Cj|], and by a Chernoﬀ bound it holds that Pr[ |Cj∩ ˆSj−1|≥ 9ǫ|Cj|]≤
+exp(−|Cj|). Under our assumptions |Cj|≥ nΩ(1) so by the union bound, with probability at least
+1− logγ n· exp(−nΩ(1) )≥ 1− 1/n all the j for which|Cj| is large enough satisfy |Cj∩ ˆSj−1|≥ 9ǫ|Cj|.
+Again, by the union bound we have
+|{S∈S : k(S)≤ 9ǫ|Ci|}|≥
+( 1
+2− 1
+n
+)
+un,
+from which the lemma follows for all n suﬃciently large.
+Assume that after the insertion of Ci the data structure uses space bi bits. We now describe the
+encoding itself for a given sequence S.
+First write the number i from Lemma 3.3, followed by an explicit uncompressed representation
+of all items in the sequence S, except those of Ci. This requires at most ( n− ci) log u + log log n
+bits, where ci =|Ci|. We will use the data structure in order to encode Ci in a more compact form
+as follows. Recall that k items out of ci are in ˆSi−1. We need at most ci bits to denote where in the
+sequence these items are located. Next, we store the data str ucture itself using bi bits. We observe
+that since the data structure is deterministic and we write a ll the elements other than Ci explicitly,
+the encoding thus far characterizes the set ˆSi−1. Also, since the data structure itself is written,
+the encoding so far characterizes the sets ˆSi. The remaining part of the encoding consists of the
+elements of Ci encoded relative to these two sets: We encode the ci− k elements in ˆSi\ ˆSi−1 using
+(ci− k) log((µ( ˆSi)− µ( ˆSi−1))u) +O(1) bits and the remaining k elements using k log(µ( ˆSi)u) +O(1)
+bits. All in all the length of this part of the encoding is:
+(ci− k) log((µ( ˆSi)− µ( ˆSi−1))u) + k log(µ( ˆSi)u) + O(1). (3.2)
+9
+
+----- Page 11 -----
+By our choice of i we have
+log(µ( ˆSi)− µ( ˆSi−1))≤ log(ǫ)− log logγ(1/α) + O(1).
+Plugging in ( 3.2) and using the fact that µ( ˆSi)≤ ǫ, the length is at most
+(ci− k)(log u + log(ǫ)− log logγ(1/α)) + k log(ǫu) + O(ci)
+≤ ci
+(
+log u + log ǫ− (1− 9ǫ) log logγ(1/α) + O(1)
+)
+,
+and the length of the remaining part of the encoding is at most
+bi + log log n + (n− ci) log u + ci.
+By ( 3.1), the total length of the encoding has to be greater than log( un/3) so we have:
+bi + log log n + (n− ci) log u + ni
+(
+log u + log ǫ− (1− 9ǫ) log logγ(1/α) + O(1)
+)
+≥ n log u− O(1).
+which implies that
+bi≥ ci(log(1/ǫ) + (1− 9ǫ) log logγ(1/α)− O(1)).
+Finally, since ci = γi we have that ci = (ni + 1
+γ−1 )· γ−1
+γ which, together with the assumption βni≥ bi
+in the statement of Theorem 3.1, completes the proof of Theorem 3.1.
+4 Construction 1 (Warm-Up): Geometrically-Increasing Dat a Structures
+Our ﬁrst construction is quite simple and natural and uses a s equence of dynamic approximate
+membership data structures of geometrically-increasing s izes. When viewing the sequence of inserted
+elements as consecutive subsequences, where the ith subsequence consists of 2 i elements, at the
+beginning of the ith subsequence we allocate and initialize a dynamic approxi mate membership
+data structure Bi with a false positive rate ǫi = Θ( ǫ/i2). The elements of the ith subsequence are
+processed by the insertion algorithm of the data structure Bi. A membership query for an element
+x∈ U is performed by invoking the membership algorithm of each of the existing data structures
+Bi, and reporting Yes if any of them does. Clearly, as the underlying data structur es have no false
+negatives, then our construction has no false negatives. In addition, a union bound guarantees that
+the false positive rate is at most ∑ ∞
+i=1 ǫi = Θ( ǫπ2/6)≤ ǫ by appropriately adjusting the constants
+in the choices of the ǫi.
+We can instantiate theBis, for example, with the dynamic approximate membership dat a struc-
+ture resulting from the dynamic dictionary of Raman and Rao [
+RR03] (via the general dictionary-
+based methodology described in Section 1.2). This dynamic approximate data structure supports
+insertions in constant expected amortized time, membershi p queries in constant time in the worst
+case, and its space consumption is (1 + o(1))2i log(1/ǫi) bits for any set of known size 2 i with a false
+positive rate ǫi. This guarantees that, for any number n of elements, the number of bits used by
+our construction after inserting any n elements is at most
+(1 + o(1))n·
+(
+max
+1≤i≤⌈log n⌉
+{log(1/ǫi) + O(1)}
+)
+= (1 + o(1))n·
+(
+max
+1≤i≤⌈log n⌉
+{log(1/ǫ) + log
+(
+i2)
++ O(1)}
+)
+= (1 + o(1))n log(1/ǫ) + O(n log log n).
+10
+
+----- Page 12 -----
+Note, however, that membership queries require time Θ(log n), since given an element x we do
+not know to which of theBi it might have been inserted in. Therefore we need a separate m embership
+query for each of the Bi. This yields the following theorem:
+Theorem 4.1. For any 0 < ǫ < 1 there exists a data structure for approximate membership fo r sets
+of unknown sizes with the following properties:
+1. The false positive rate is at most ǫ.
+2. For any integer n, the data structure uses at most (1 + o(1))n log(1/ǫ) + O(n log log n) bits of
+space after n insertions.
+3. Insertions take expected amortized constant time, and for any integer n membership queries
+are supported in O(log n) time after n insertions.
+5 Construction 2: Constant-Time Operations
+As in our ﬁrst construction, when processing a sequence of el ements we partition it into consecutive
+subsequences, where the ith subsequence consists of 2 i elements. For every integer i we denote the
+ith subsequence by si = x2i− 1··· x2i−1, and denote by Si the set{x2i− 1 , . . . , x2i−1}.
+LetH be a pairwise independent collection of functions h : U→{ 0, 1}ℓ, where ℓ≥⌈ log(1/ǫ)⌉ +
+log u + 2 and |U| = u. For each h∈H and integer i∈ [ℓ] we let hi : U→{ 0, 1}ℓi be the leftmost
+ℓi =⌈log(1/ǫ)⌉ + i + 2 output bits of h, and let gi : U→{ 0, 1}r be the next r =⌈log log u⌉ output
+bits of h (padded with the symbol ⊥ when less than r such bits are available).
+The basic construction. The data structure is initialized by sampling a function h∈H . At
+any point in time, when the ith subsequence si is being processed, the data structure consists of a
+dynamic dictionary Di. As discussed in Section
+1.3, the insertion procedure operates in one out of
+two possible modes, depending on whether or not the element t hat is currently being inserted is the
+ﬁrst element of its subsequence. We describe each of these mo des separately.
+• Mode 1. When the inserted element x∈ Si is not the ﬁrst of its subsequence, we store the
+pair ( hi(x), gi(x)) in the current dictionary Di using hi(x) as its key.
+• Mode 2. When the inserted element x∈ Si is the ﬁrst of its subsequence (i.e., x = x2i− 1 ), we
+transition from the current dictionary Di−1 to a new dictionary Di, deallocate the space used
+byDi−1, and then proceed as in mode 1 above.
+Speciﬁcally, the dictionary Di is initialized for storing at most 2 i+2 elements, each of length
+ℓi + r bits. If i > 1 we initialize Di by enumerating all pairs currently stored by Di−1, and
+processing each such pair ( y, α1··· αr)∈{ 0, 1}ℓi− 1×{ 0, 1,⊥}r as follows: If α1̸=⊥, we insert
+toDi the pair ( yα1, α2··· αr⊥) using yα1 as its key. Otherwise, we insert to Di the two pairs
+(y0, α) and ( y1, α) using y0 and y1 as their keys, respectively.
+Membership queries are naturally deﬁned: Given an element x∈ U and that the currently
+dictionary isDi for some i, we query Di with the key hi(x) to retrieve a pair of the form ( hi(x), α)
+for some α. If such a pair is found we output Yes, and otherwise we output No.
+11
+
+----- Page 13 -----
+Dealing with failures. We note that a subtle point in the construction is that each of the
+dictionariesD1,D2, . . . may have a certain failure probability. Using existing dict ionaries, the failure
+probability for each Di can be made as small as any polynomial in 2 −i. This means that whenever
+i = Ω(log u), the failure probability can be made polynomially small in u, but when i = o(log u) the
+failure probability is rather large.
+There are two standard methods for dealing with such large fa ilure probabilities. The ﬁrst is
+to simply rebuild each Di that fails. Even for small values of i, the expected number of failures is
+typically a small constant, and thus we will be able to guaran tee good expected performance. The
+second is to group together into one dictionary the ﬁrst uδ elements, for an arbitrary small constant
+0 < δ < 1. This way, a union bound shows that no dictionary fails exce pt with probability u−c
+for any pre-determined constant c > 1. For simplicity, in what follows we analyze our constructi on
+assuming that at least n > u δ elements are inserted, and that we group together the ﬁrst uδ elements.
+Optimal space via bucketing. Note that the transitioning from each dictionary Di toDi+1
+requires storing both until all elements of Di have been transitioned into Di+1 (as explained above).
+This increases the space used by the data structure by a multi plicative constant factor. Using a
+standard bucketing technique (see, for example, [ DMadH90, DR09]) we reduce the space usage of the
+construction when at least n > u δ elements are inserted, for an arbitrary small constant 0 < δ < 1.
+Speciﬁcally, we ﬁrst hash the elements into uδ/2 buckets, and then apply our basic construction
+in each bucket. For enabling the data structure to gradually allocate more space, the data structures
+in the buckets are interleaved word-wise: For every i∈ [uδ/2], the data structure of the ith bucket
+resides in memory words whose location is equal to i modulo uδ/2. This guarantees that if the
+maximum space usage of the data structures in the buckets is smax words, then the total space
+required for the construction is uδ/2· smax words (and additional space can be easily allocated).
+For any uδ < n≤ u the hash functions of [ DMadH90, DR09] split the elements quite evenly: each
+bucket contains at most (1 + o(1))n/uδ/2 elements, except with a probability that is polynomially
+small in u. Moreover, these functions can be evaluated in constant tim e. Applying our basic
+construction in each bucket guarantees that the transition ing operation occurs in at most one bucket
+at any point in time, and therefore the additional space that is required is proportional to the number
+of elements in each bucket and not to total number of elements .
+Performance analysis. The following theorem is obtained by instantiating our cons truction with
+a suﬃciently good construction of a dynamic dictionary. For example, the dynamic dictionary of
+Raman and Rao [ RR03] is space optimal (up to additive lower-order terms), suppo rts insertions in
+constant expected amortized time, and membership queries i n constant time in the worst case.
+Theorem 5.1. For any 0 < ǫ < 1, integer u, and constant c > 1, there exists a data structure
+for approximate membership for sets of unknown sizes from a u niverse of size u with the following
+properties:
+1. The false positive rate is ǫ + u−c.
+2. For any constant 0 < δ < 1 and n > u δ, the data structure uses at most (1 + o(1))n log(1/ǫ) +
+O(n log log n) bits of space after n insertions.
+3. Insertions take expected amortized constant time, and mem bership queries take constant time
+in the worst case.
+Proof. As discussed above, hashing the inserted elements into uδ/2 buckets results in a balanced
+allocation up to additive lower order terms with all but a pol ynomially small probability in u.
+12
+
+----- Page 14 -----
+Therefore, for simplicity, from this point on we focus on n elements that are inserted into a single
+bucket. We ﬁrst prove that for every i, at most 2 i+2 elements are inserted into the dictionary Di. Fix
+an i, and partition the elements that are inserted to Di to two disjoint sets: elements that correspond
+to elements from S1, . . . , Si−r, and elements that correspond to elements from Si−r+1, . . . , Si. For
+each element x that belongs to some Sj, we observe that it contributes 2 i−j−r elements if 1≤ j≤ i−r,
+and exactly one element if i− r + 1≤ j≤ i. Therefore, the number of elements that are inserted
+intoDi is
+i−r∑
+j=1
+|Sj|· 2i−j−r +
+i∑
+j=i−r+1
+|Sj| =
+i−r∑
+j=1
+2i−r−1 +
+i∑
+j=i−r+1
+2j
+≤ 2i+2.
+Now, for bounding the false positive rate, ﬁx a sequence x1··· xj of inserted elements, an element
+x /∈{ x1, . . . , xj}, and let i be such that 2 i−1≤ j≤ 2i− 1. Then, the current state of the data
+structure consists of a dictionaryDi, and a query for x initiates a membership query for the key hi(x).
+Since at most 2 i+2 keys were inserted so far to the dictionary Di, the pairwise independence of H
+guarantees that x forms a collision with some existing element with probabili ty at most 2 i+2·2−ℓi≤ ǫ.
+In addition, we assume that the constructions of all the Di are successful except with probability
+u−c, and therefore the false positive rate is at most ǫ + u−c.
+We now bound the space overhead. Assume that 2 i−1≤ n≤ 2i− 1 elements were inserted, and
+that the current dictionary Di is constructed using a dictionary that can store n elements from a
+universe of size u′ = poly( n′) with r bits of satellite data using space (1 + o(1))n(log(u′/n) + r) bits
+(e.g., [ RR03] as discussed above). Then, the space utilized by Di is at most
+(1 + o(1))n(log(2ℓi /2i) + r)≤ (1 + o(1))n log(1/ǫ) + O(n log log u)
+= (1 + o(1))n log(1/ǫ) + O(n log log n)
+Finally, note that membership queries are supported in cons tant time, and that the expected amor-
+tized insertion time is also constant (as in the underlying d ictionary).
+In the remainder of this section we describe two extensions o f our construction. The ﬁrst exten-
+sion shows how to enjoy constant-time insertions in the wors t case by increasing the space usage
+from (1 + o(1))n log(1/ǫ) + O(n log log n) to O(n log(1/ǫ) + n log log n). The second extension shows
+how to support deletions (which have to be carefully deﬁned) .
+Constant-time insertions in the worst case via de-amortization. As presented above using
+the two diﬀerent insertion modes, the construction enjoys a g ood amortized insertion time: Most
+insertions correspond to mode 1 and are processed very fast, while only a small number of insertions
+correspond to case 2. The main observation is that if the unde rlyingDi oﬀers a constant insertion
+time in the worst case with high probability (e.g., as in [ ANS10]), then our construction without
+the bucketing can be de-amortized: Instead of initializing each Di only when inserting x2i− 1, then
+the total amount of work required for initializing Di can be equally split among the insertions of
+x2i− 1, . . . , x2i−1. Speciﬁcally, on each such insertion, devote a constant num ber of additional steps
+for the initialization of Di. As shown in the proof of Theorem 5.1, for every i at most 2 i+1 elements
+are inserted into the dictionary Di−1. Therefore, the total amount of work (in the worst case)
+required for initializing Di is O(2i). We note that the idea of bucketing the elements that we used
+above does not seem useful here. The reason is that it is no lon ger the case that a transition between
+dictionaries occurs in at most one bucket at any point in time . Therefore, the space usage (even with
+13
+
+----- Page 15 -----
+bucketing) would be O(n log(1/ǫ) + n log log n) bits (with a rather small leading constant) instead
+of (1 + o(1))n log(1/ǫ) + O(n log log n) bits as in Theorem 5.1.
+Supporting deletions. Note that for any approximate membership data structure it i s impossible
+to detect if an attempt is made to delete a false positive. Thu s, the data structure must put the
+burden on its user to ensure that deletions are applied only t o elements that are in fact in the set
+(if this contract is broken, false negatives may arise). In t he space analysis we will also assume that
+insertions are proper, i.e., an element may be inserted at mo st once.
+A well-known approach to supporting deletions [ PPR05] is to store the multiset of signatures
+rather than just the set of distinct signatures. A deletion o f an element with signature h(x) is
+implemented by decreasing the multiplicity of h(x) in the multiset by 1. However, there are compli-
+cations when trying to make this technique work in our settin g. For example, in Construction 1, the
+element to be deleted may be a false positive in one of the data structuresBi and a “true positive”
+in another data structure Bj. The problem is that there is no way to tell which is the false p ositive,
+and if we remove h(x) fromBi a false negative will occur. A similar problem occurs in Cons truction
+2, where it may not be possible to determine which signatures are to be deleted.
+Our way around this problem is to abandon the idea of storing a multiset of signatures, but
+rather use a secondary dictionary data structure whenever w e encounter identical signatures. In the
+following we describe how to augment Construction 2 with del etions. When inserting an element x
+we ﬁrst check if it is a false positive of the existing set. Eve ry false positive is inserted in the secondary
+data structure, while remaining elements are inserted in th e primary data structure. Membership
+queries are extended to also look up the element in the second ary data structure, which has zero false
+positive rate. The deletion algorithm ﬁrst checks if the ele ment can be deleted from the secondary
+data structure. If not, its signature(s) need to be deleted f rom the primary structure. However,
+elements that were inserted when the set was smaller may be as sociated with a large number of
+signatures, formed by extending an original signature with all possible bit strings to form a set of
+possible signatures matching the current signature length . To allow eﬃcient deletion, we extend
+the information that is stored with each key with the length o f the original signature, and with a
+bit that can be used to indicate deletion. Deletion is perfor med by marking the lexicographically
+smallest signature in the set (i.e., the one extended with on ly zeros) as deleted. The membership
+procedure is then modiﬁed to compute this signature, and che ck whether it has been marked as
+deleted. To ensure that we do not use signiﬁcant space for sig natures of deleted keys, we run a
+background process that periodically checks if each signat ure can be removed from the set, spending
+constant time per update. In a similar way, we periodically c heck keys in the secondary structure
+to see if they remain false positives, or can be moved to the pr imary structure.
+It is easy to see that the data structure will work correctly ( under the assumption of proper
+deletions and insertions). What is less obvious is how much e xtra space is needed for the secondary
+structure. Observe that we may without loss of generality as sume that the false positive rate is
+at most 1 / log u, since we allow a space overhead of O(n log log n) bits, and n > u δ. This means
+that the expected number of false positives in a set of n elements is O(n/ log u), so storing this set
+requires just O(n) bits in expectation. To ensure a high probability bound on t he space usage, we
+need a stronger hash function to compute the signatures. In p articular, from [ DGM+92] it follows
+that using constant-degree polynomial hash functions we ca n ensure that the number of signature
+collisions, corresponding to false positives, will be with in a constant factor of the expectation with
+probability 1− u−c, for any desired constant c.
+14
+
+----- Page 16 -----
+6 Directions for Future Research
+Our work raises several fundamental directions for future r esearch both from a theoretical perspective
+and from a practical perspective. From a theoretical perspe ctive, an interesting problem is to tighten
+our lower bound by identifying the leading constant in the ad ditive Ω( n log log n) factor. In addition,
+it would be interesting to explore whether our construction s can be improved by a data structure
+that simultaneously enjoys the best of both worlds: space co nsumption of (1 + o(1))n log(1/ǫ) +
+O(n log log n) bits and constant-time operations in the worst case with hi gh probability.
+From a more practical perspective, while Bloom ﬁlters [
+Blo70] provide a practical solution in the
+setting where an upper bound n is known in advance, our cosntruction do not seem to enjoy the
+same level of practicality in the setting where such an upper is not known in advance. Speciﬁcally,
+our ﬁrst construction supports membership queries in time O(log n), which may be too slow in
+some applications, and our second construction suﬀers from n on-trivial hidden constants due to our
+de-amortization technique. It would be very interesting to design a practical solution that matches
+our space lower bound.
+References
+[ABP+07] P. S. Almeida, C. Baquero, N. Pregui¸ ca, and D. Hutchison . Scalable Bloom ﬁlters.
+Information Processing Letters , 101(6):255–261, 2007.
+[ANS09] Y. Arbitman, M. Naor, and G. Segev. De-amortized cuc koo hashing: Provable worst-
+case performance and experimental results. In Proceedings of the 36th International
+Colloquium on Automata, Languages and Programming , pages 107–118, 2009.
+[ANS10] Y. Arbitman, M. Naor, and G. Segev. Backyard cuckoo h ashing: Constant worst-case
+operations with a succinct representation. In Proceedings of the 51th Annual IEEE
+Symposium on Foundations of Computer Science , pages 787–796, 2010.
+[Blo70] B. H. Bloom. Space/time trade-oﬀs in hash coding with allowable errors. Communica-
+tions of the ACM , 13(7):422–426, 1970.
+[BM03] A. Z. Broder and M. Mitzenmacher. Network applicatio ns of Bloom ﬁlters: A survey.
+Internet Mathematics , 1(4), 2003.
+[BMP+06] F. Bonomi, M. Mitzenmacher, R. Panigrahy, S. Singh, and G . Varghese. An improved
+construction for counting Bloom ﬁlters. In Proceedings of the 14th Annual European
+Symposium on Algorithms , pages 684–695, 2006.
+[BV13] D. Belazzougui and R. Venturini. Compressed static f unctions with applications to
+other dictionary problems. In Proceedings of the 24th Annual ACM-SIAM Symposium
+on Discrete Algorithms , 2013.
+[CFG+78] L. Carter, R. W. Floyd, J. Gill, G. Markowsky, and M. N. Weg man. Exact and ap-
+proximate membership testers. In Proceedings of the 10th Annual ACM Symposium on
+Theory of Computing , pages 59–65, 1978.
+[CKR+04] B. Chazelle, J. Kilian, R. Rubinfeld, and A. Tal. The Bloo mier ﬁlter: An eﬃcient
+data structure for static support lookup tables. In Proceedings of the 15th Annual
+ACM-SIAM Symposium on Discrete Algorithms , pages 30–39, 2004.
+15
+
+----- Page 17 -----
+[CM03] S. Cohen and Y. Matias. Spectral Bloom ﬁlters. In Proceedings of the 2003 ACM
+SIGMOD International Conference on Management of Data , pages 241–252, 2003.
+[CW79] L. Carter and M. N. Wegman. Universal classes of hash f unctions. Journal of Computer
+and System Sciences , 18(2):143–154, 1979.
+[DGM+92] M. Dietzfelbinger, J. Gil, Y. Matias, and N. Pippenger. P olynomial hash functions are
+reliable. In Proceedings of the 19th International Colloquium on Automata , Languages
+and Programming, pages 235–246, 1992.
+[DMadH90] M. Dietzfelbinger and F. Meyer auf der Heide. A new universal class of hash functions
+and dynamic hashing in real time. In Proceedings of the 17th International Colloquium
+on Automata, Languages and Programming , pages 6–19, 1990.
+[DP08] M. Dietzfelbinger and R. Pagh. Succinct data structu res for retrieval and approxi-
+mate membership. In Proceedings of the 35th International Colloquium on Automata ,
+Languages and Programming, pages 385–396, 2008.
+[DR09] M. Dietzfelbinger and M. Rink. Applications of a spli tting trick. In Proceedings of
+the 36th International Colloquium on Automata, Languages and Programming, pages
+354–365, 2009.
+[FCA+00] L. Fan, P. Cao, J. M. Almeida, and A. Z. Broder. Summary cac he: A scalable wide-area
+web cache sharing protocol. IEEE/ACM Transactions on Networking , 8(3):281–293,
+2000.
+[GWC+06] D. Guo, J. Wu, H. Chen, and X. Luo. Theory and network appli cations of dynamic
+bloom ﬁlters. In INFOCOM 2006. 25th IEEE International Conference on Computer
+Communications. Proceedings, pages 1–12, 2006.
+[GWC+10] D. Guo, J. Wu, H. Chen, Y. Yuan, and X. Luo. The dynamic Bloo m ﬁlters. IEEE
+Transactions on Knowledge and Data Engineering , 22(1):120–133, 2010.
+[Hag98] T. Hagerup. Sorting and searching on the word RAM. In Proceedings of the 15th
+Annual Symposium on Theoretical Aspects of Computer Science , pages 366–398, 1998.
+[HKL08] F. Hao, M. S. Kodialam, and T. V. Lakshman. Increment al Bloom ﬁlters. In Proceedings
+of the 27th IEEE International Conference on Computer Communicat ions, pages 1067–
+1075, 2008.
+[HMP01] T. Hagerup, P. B. Miltersen, and R. Pagh. Determinis tic dictionaries. Journal of
+Algorithms, 41(1):69–85, 2001.
+[LP10] S. Lovett and E. Porat. A lower bound for dynamic appro ximate membership data
+structures. In Proceedings of the 51th Annual IEEE Symposium on Foundations of
+Computer Science , pages 797–804, 2010.
+[Mil99] P. B. Miltersen. Cell probe complexity – A survey. In Proceedings of the 19th Con-
+ference on the Foundations of Software Technology and Theore tical Computer Science,
+Advances in Data Structures Workshop , 1999.
+[MPP05] C. W. Mortensen, R. Pagh, and M. P˘ atra¸ scu. On dynam ic range reporting in one
+dimension. In Proceedings of 37th Annual ACM Symposium on Theory of Computing ,
+pages 104–111, 2005.
+16
+
+----- Page 18 -----
+[Por09] E. Porat. An optimal Bloom ﬁlter replacement based o n matrix solving. In Proceedings
+of the 4th International Computer Science Symposium in Russia , pages 263–273, 2009.
+[PP08] A. Pagh and R. Pagh. Uniform hashing in constant time a nd optimal space. SIAM
+Journal on Computing , 38(1):85–96, 2008.
+[PPR05] A. Pagh, R. Pagh, and S. S. Rao. An optimal Bloom ﬁlter replacement. In Proceedings
+of the 16th Annual ACM-SIAM Symposium on Discrete Algorithms , pages 823–829,
+2005.
+[RR03] R. Raman and S. S. Rao. Succinct dynamic dictionaries and trees. In Proceedings of
+the 30th International Colloquium on Automata, Languages and Programming, pages
+357–368, 2003.
+[WJZ+11] J. Wei, H. Jiang, K. Zhou, and D. Feng. DBA: A dynamic Bloom ﬁlter array for scal-
+able membership representation of variable large data sets . In Proceedings of the 19th
+Annual IEEE/ACM International Symposium on Modeling, Analysi s and Simulation
+of Computer and Telecommunication Systems , pages 466–468, 2011.
+[WJZ+13] J. Wei, H. Jiang, K. Zhou, and D. Feng. Eﬃciently represen ting membership for variable
+large data sets. To appear in IEEE Transactions on Parallel and Distributed Systems ,
+2013.
+17
