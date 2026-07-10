@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "预备知识.md",
+                "file": "框架阅读.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "预备知识"
+              "title": "框架阅读"
             }
           }
         ]
@@ -185,7 +185,7 @@
   },
   "active": "5fa585ef79712b4f",
   "lastOpenFiles": [
-    "框架阅读.md",
-    "预备知识.md"
+    "预备知识.md",
+    "框架阅读.md"
   ]
 }
