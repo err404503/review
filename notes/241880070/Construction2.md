@@ -57,3 +57,4 @@
 - **Dealing with failures**：通过重建或分组（前 u^δ 个元素）处理底层字典失败概率。
 - **Supporting deletions**：引入 secondary dictionary 处理 false positive，结合标记删除 + 后台清理，支持受限删除（只允许删除真实元素）。
 
+### 9. 定理5.1
