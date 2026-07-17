@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "横向对比.md",
+                "file": "241880161_personal_review.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "横向对比"
+              "title": "241880161_personal_review"
             }
           }
         ]
@@ -186,12 +186,13 @@
   },
   "active": "5fa585ef79712b4f",
   "lastOpenFiles": [
-    "定理3.1.md",
     "横向对比.md",
-    "未命名.base",
+    "预备知识.md",
+    "241880161_personal_review.md",
+    "定理3.1.md",
     "3.2章节.md",
     "3.1章节.md",
     "框架阅读.md",
-    "预备知识.md"
+    "未命名.base"
   ]
 }
