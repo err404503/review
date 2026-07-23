@@ -71,8 +71,16 @@ Approximate membership data structures：给定一个可以在线插入元素的
 \subsection{本文研究的变体}
 已有的 Approximate membership data structures需要集合S的大小n已知，该论文研究的是n未知的情形。
 \section{这个问题为什么重要}
+现代计算环境本质上是流式计算：
+\begin{itemize}
+    \item 数据随机：无法预知会有多少数据量
+    \item 突发流量：即使有历史统计平均值作参考，也难免有时出现数据量激增导致$n$的值翻倍
+    \item 如果数据结构严格要求预先知道$n$的大小，在流量激增的时候要么拒绝服务，要么假阳性率失控
+\end{itemize}
 
 \section{相关研究}
+\subsection{Bloom filters}
+\subsection{}
 \section{论文提出了什么技术}
 \section{技术背后的直觉}
 \section{技术的非凡之处和好处}
