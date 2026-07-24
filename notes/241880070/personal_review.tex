@@ -64,8 +64,8 @@ Without Knowing Its Size In Advance}\\[0.5em]}
 \subsection{经典问题}
 Approximate membership data structures：给定一个可以在线插入元素的集合S(大小为n)，支持成员查询，并且需要满足以下这两个条件：
 \begin{itemize}
-    \item 无假阴性：$\forall x \in S$，查询总是返回yes
-    \item 假阳性率最多$\varepsilon$：$\forall x \notin S$，查询返回yes的概率最多达到给定的$\varepsilon$
+    \item 无假阴性：$\forall x \in S$，查询总是返回yes。
+    \item 假阳性率最多$\varepsilon$：$\forall x \notin S$，查询返回yes的概率最多达到给定的$\varepsilon$。
 \end{itemize}
 
 \subsection{本文研究的变体}
@@ -73,14 +73,41 @@ Approximate membership data structures：给定一个可以在线插入元素的
 \section{这个问题为什么重要}
 现代计算环境本质上是流式计算：
 \begin{itemize}
-    \item 数据随机：无法预知会有多少数据量
-    \item 突发流量：即使有历史统计平均值作参考，也难免有时出现数据量激增导致$n$的值翻倍
-    \item 如果数据结构严格要求预先知道$n$的大小，在流量激增的时候要么拒绝服务，要么假阳性率失控
+    \item 数据随机：无法预知会有多少数据量。
+    \item 突发流量：即使有历史统计平均值作参考，也难免有时出现数据量激增导致$n$的值翻倍。
+    \item 如果数据结构严格要求预先知道$n$的大小，在流量激增的时候要么拒绝服务，要么假阳性率失控。
 \end{itemize}
 
 \section{相关研究}
-\subsection{Bloom filters}
-\subsection{}
+\subsection{Bloom filters(布隆过滤器)}
+\begin{itemize}
+    \item 布隆过滤器是一种很经典的数据结构，天然支持动态插入。其空间开销是信息论下界$n\log(1/\varepsilon)$的$\log(e) \approx 1.44 $倍。
+    \item 标准的 Bloom 过滤器不支持从集合S中删除元素，因为将任意位重置为0可能会导致假阴性。
+    \item 为了支持删除查询，可以使用计数布隆过滤器。但这会使空间使用增加$\Omega(\log\log n)$倍。这种删除支持是有条件的：只有在不删除假阳性元素时，数据结构才能正确工作，但根据定义，无法完全避免对假阳性元素的删除。
+    \item Cohen 和 Matias 提出了一种方法，将空间开销降低至$O(n)$位。
+\end{itemize}
+
+\subsection{基于字典的近似成员查询}
+\begin{itemize}
+    \item 早在 1978 年，Carter 等人就提出了一种能达到类似结果的技术。他们观察到，维护一个多重集 $h(S)$（其中 $h : [u] \to [n/\epsilon]$ 是一个通用哈希函数），如果集合 $h(S)$ 的存储空间接近信息论下界 $\log\binom{n/\varepsilon+n}{n}$ 位，那么整体解决方案的空间消耗仅为 $n\log(1/\epsilon) + O(n)$ 位。
+    \item 如果不需要支持删除操作，只需存储不同的哈希值集合 $h(S)$ 即可。这种动态集合可以被简洁地存储，且所有操作以高概率在 $O(1)$ 时间内完成。如果需要支持动态多重集（即支持删除），可以通过转化为标准成员查询问题来实现，代价是更新操作需要时间增大。
+\end{itemize}
+\subsection{在线/离线空间需求的差异}
+\begin{itemize}
+    \item 在静态情况下，已经证明能够逼近 $n\log(1/\epsilon)$ 的空间下界。例如，Dietzfelbinger 和 Pagh 证明了在查询时间为 $\omega(\log(1/\epsilon))$ 且 $\epsilon$ 为 2 的整数幂时，空间开销可以控制在 $o(n)$ 项以内；Porat 在常数查询时间的情况下实现了相同的结果；随后 Bellazougui 和 Venturini 进一步消除了对 $\epsilon$ 的限制，同时维持了常数查询时间。
+    \item 然而，Lovett 和 Porat 证明了这些静态情况下的结果无法直接扩展到允许动态场景：在动态更新下，需要 $\Omega(n/\log(1/\epsilon))$ 位的额外空间开销。即使在整个插入序列结束前不进行任何查询，该下界依然成立。这意味着，对于以数据流形式给出的键集，仅使用接近静态大小下界的空间来构建近似成员数据结构是不够的。
+\end{itemize}
+\subsection{动态空间使用}
+\begin{itemize}
+    \item 当要求空间必须依赖于集合的当前大小时，上界要求更加严格。
+    \item 文献中现有的相关技术通常会导致 $\Omega(\log n)$ 或 $\Omega(\log(1/\epsilon))$ 的查询时间，以及 $\Omega(n\log n)$ 位的高空间开销。
+    \item 这些数据结构通常采用维护多个近似成员数据结构并逐一查询的策略。如果采用几何级数递增的容量，就需要 $\Omega(\log n)$ 个这样的数据结构。每一个结构对应的假阳性率 $\epsilon_1, \epsilon_2, \dots$ 之和必须收敛于目标 $\epsilon$。例如，让 $\epsilon_i$ 随 $i$ 呈几何级数递减，这会导致 $\epsilon_i = n^{-\Omega(i)}$，从而产生 $\Omega(n\log n)$ 的空间使用量。
+\end{itemize}
+\subsection{动态完美哈希与检索}
+\begin{itemize}
+    \item 在静态情况下，一种实现近似成员查询的方法是存储一个完美哈希函数，将键单射地映射到 $\{1,\dots,n\}$，然后在数组中根据该完美哈希函数为每个键存储 $\log(1/\epsilon)$ 位的签名。
+    \item 更一般地，动态检索数据结构（如 Bloomier filters）也可以用来构建动态近似成员数据结构。研究表明，在线设置下，这两个问题都需要 $\Theta(n\log\log n)$ 的空间。然而，这些上界具有固定的空间使用量（在常数因子内），因此无法实现本文所获得的空间结果。
+\end{itemize}
 \section{论文提出了什么技术}
 \section{技术背后的直觉}
 \section{技术的非凡之处和好处}
