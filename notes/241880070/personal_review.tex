@@ -109,8 +109,52 @@ Approximate membership data structures：给定一个可以在线插入元素的
     \item 更一般地，动态检索数据结构（如 Bloomier filters）也可以用来构建动态近似成员数据结构。研究表明，在线设置下，这两个问题都需要 $\Theta(n\log\log n)$ 的空间。然而，这些上界具有固定的空间使用量（在常数因子内），因此无法实现本文所获得的结果。
 \end{itemize}
 \section{主要定理与贡献}
-
+论文在集合大小 $n$ 事先未知的设定下，给出了近似成员查询问题的空间下界和上界，并给出两种有效构造。
+\subsection{定理 1.1（下界）}
+任意针对未知大小集合 $S$、假阳性率 $\varepsilon$ 的近似成员数据结构，在某 $n>u^\delta$ 次插入后，必须使用至少
+\[
+(1-o(1))n\log(1/\varepsilon)+\Omega(n\log\log n)
+\]
+位的空间。
+\begin{itemize}
+    \item 第一项 $(1-o(1))n\log(1/\varepsilon)$ 是已知 $n$ 时就已经需要的。
+    \item 第二项 $\Omega(n\log\log n)$ 是“不知道 $n$”所付出的额外代价。
+\end{itemize}
+\textbf{注：}条件 $n>u^\delta$ 的含义是：$\delta\in(0,1)$ 为任意小常数，$n$ 与全集大小 $u$ 之间呈多项式关系（例如 $n>\sqrt{u}$ 或 $n>u^{0.01}$）。这排除了 $n$ 极小（如 $n=O(\log u)$）的退化情况。
+\subsection{定理 1.2（上界）}
+论文给出两种匹配下界的构造，以及构造2的去摊销优化版本，具体信息如下。
+\begin{center}
+\footnotesize
+\renewcommand{\arraystretch}{1.25}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{|l|c|c|c|}
+\hline
+\textbf{属性} & \textbf{构造 1（热身）} & \textbf{构造 2（精妙）} & \textbf{构造 2（去摊销）} \\
+\hline
+空间 & 
+$(1+o(1))n\log(1/\varepsilon)$ 
+\newline $+\,O(n\log\log n)$ 
+& 
+$(1+o(1))n\log(1/\varepsilon)$ 
+\newline $+\,O(n\log\log n)$ 
+& 
+$O\bigl(n\log(1/\varepsilon)$ 
+\newline $+\,n\log\log n\bigr)$ \\
+\hline
+假阳性率 & $\le\varepsilon$ & $\le\varepsilon+u^{-c}$ & $\le\varepsilon+u^{-c}$ \\
+\hline
+假阴性 & 无 & 无 & 无 \\
+\hline
+插入时间 & 期望摊还 $O(1)$ & 期望摊还 $O(1)$ & 最坏 $O(1)$ \\
+\hline
+查询时间 & $O(\log n)$ & 最坏 $O(1)$ & 最坏 $O(1)$ \\
+\hline
+是否需要已知 $n$ & 否 & 否 & 否 \\
+\hline
+\end{tabular}
+\end{center}
 \section{证明总体思路}
+
 \section{关键技术细节}
 
 \end{document}
