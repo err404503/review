@@ -106,11 +106,12 @@ Approximate membership data structures：给定一个可以在线插入元素的
 \subsection{动态完美哈希与检索}
 \begin{itemize}
     \item 在静态情况下，一种实现近似成员查询的方法是存储一个完美哈希函数，将键单射地映射到 $\{1,\dots,n\}$，然后在数组中根据该完美哈希函数为每个键存储 $\log(1/\epsilon)$ 位的签名。
-    \item 更一般地，动态检索数据结构（如 Bloomier filters）也可以用来构建动态近似成员数据结构。研究表明，在线设置下，这两个问题都需要 $\Theta(n\log\log n)$ 的空间。然而，这些上界具有固定的空间使用量（在常数因子内），因此无法实现本文所获得的空间结果。
+    \item 更一般地，动态检索数据结构（如 Bloomier filters）也可以用来构建动态近似成员数据结构。研究表明，在线设置下，这两个问题都需要 $\Theta(n\log\log n)$ 的空间。然而，这些上界具有固定的空间使用量（在常数因子内），因此无法实现本文所获得的结果。
 \end{itemize}
-\section{论文提出了什么技术}
-\section{技术背后的直觉}
-\section{技术的非凡之处和好处}
-\section{技术是怎么实现的}
+\section{主要定理与贡献}
+
+\section{证明总体思路}
+\section{关键技术细节}
+
 \end{document}
 
