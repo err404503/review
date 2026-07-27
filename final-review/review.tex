@@ -67,8 +67,8 @@
 
 Approximate membership data structures（近似成员查询数据结构）：给定一个可以在线插入元素的集合 $S$（大小为 $n$），支持成员查询，并且需要满足以下两个条件：
 \begin{itemize}
-    \item \textbf{无假阴性}：$\forall x \in S$，查询总是返回 Yes。
-    \item \textbf{假阳性率最多 $\varepsilon$}：$\forall x \notin S$，查询返回 Yes 的概率最多达到给定的 $\varepsilon$。
+    \item \textbf{无假阴性}：$\forall x \in S$，查询总是返回存在。
+    \item \textbf{假阳性率最多 $\varepsilon$}：$\forall x \notin S$，查询返回存在的概率最多达到给定的 $\varepsilon$。
 \end{itemize}
 
 当集合大小 $n$ 事先已知时，空间下界为 $\Theta(n\log(1/\varepsilon))$ 比特，即每个元素仅需 $\Theta(\log(1/\varepsilon))$ 比特。这一结论是信息论的基本结果，且已有接近此下界的高效数据结构（如 Bloom Filter 及其改进）。
@@ -87,12 +87,12 @@ Approximate membership data structures（近似成员查询数据结构）：给
     \item 如果数据结构严格要求预先知道 $n$ 的大小，在流量激增的时候要么拒绝服务，要么假阳性率失控。
 \end{itemize}
 
-在大数据流场景（如网络监控、数据库缓存、分布式系统）中，集合大小往往无法提前预知。本文工作解释了为什么简单扩展 Bloom Filter 会浪费空间，并为设计"空间自适应"的近似成员结构提供了理论指导。
+在大数据流场景（如网络监控、数据库缓存、分布式系统）中，集合大小往往无法提前预知。本文详细解释了为什么简单扩展 Bloom Filter 会浪费空间，并为设计"空间自适应"的近似成员结构提供了理论支持。
 
 % ==================== SECTION 3 ====================
 \section{相关研究}
 
-\subsection{Bloom Filters（布隆过滤器）}
+\subsection{Bloom Filters}
 \begin{itemize}
     \item Bloom Filter 是一种经典的数据结构，天然支持动态插入。其空间开销是信息论下界 $n\log(1/\varepsilon)$ 的 $\log(e) \approx 1.44$ 倍。
     \item 标准 Bloom Filter 不支持从集合 $S$ 中删除元素，因为将任意位重置为 0 可能会导致假阴性。
