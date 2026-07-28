@@ -59,77 +59,44 @@
 \endgroup
 \newpage
 
-% ==================== SECTION 1 ====================
-\section{论文解决了什么问题}
+\section{概述}
 
-\subsection{经典问题}
+本文 \textit{How to Approximate A Set Without Knowing Its Size In Advance}（Pagh, Segev, Wieder, 2013）研究的是动态近似成员查询问题的一个基本变体：当待表示集合的最终大小 $n$ 事先未知时，数据结构必须支持在线插入和成员查询（无假阴性、假阳性率 $\le\varepsilon$），并且空间尽可能接近信息论下界。
 
-Approximate membership data structures：给定一个可以在线插入元素的集合 $S$（大小为 $n$），支持成员查询，并且需要满足以下这两个条件：
+论文的核心贡献由三部分组成。其一，通过压缩论证证明了空间下界 $(1-o(1))n\log(1/\varepsilon)+\Omega(n\log\log n)$，首次揭示了"已知 $n$"与"未知 $n$"两种设定之间的超线性空间差距。其二，提出构造一（几何增长数据结构），以 $O(\log n)$ 查询时间为代价，达到 $(1+o(1))n\log(1/\varepsilon)+O(n\log\log n)$ 的空间上界。其三，提出构造二（单字典前缀扩展），将查询时间改进为最坏情况 $O(1)$，同时保持相同量级的空间上界；并通过去摊销化进一步给出插入最坏情况 $O(1)$ 的版本。
+
+本 review 按论文原有章节顺序展开：引言与预备知识（§1–2）、空间下界（§3）、上界构造一和构造二（§4–5）、相关研究（§6），最后以总结与讨论收束（§7）。
+
+\section{引言}
+
+\subsection{问题定义}
+
+近似成员数据结构：给定一个可以在线插入元素的集合 $S$（大小为 $n$），支持成员查询，并且需要满足以下这两个条件：
 \begin{itemize}
     \item 无假阴性：$\forall x \in S$，查询总是返回 yes。
     \item 假阳性率最多 $\varepsilon$：$\forall x \notin S$，查询返回 yes 的概率最多达到给定的 $\varepsilon$。
 \end{itemize}
 
-当 $n$ 已知的时候，理论空间占用是 $\Theta(n\log(1/\varepsilon))$ bits，单个元素占用 $\Theta(\log(1/\varepsilon))$ bits。
+当 $n$ 已知的时候，已被证明空间占用是 $\Theta(n\log(1/\varepsilon))$ bits，单个元素占用 $\Theta(\log(1/\varepsilon))$ bits。
 
-\subsection{本文研究的变体}
+已有的近似成员数据结构需要集合 $S$ 的大小 $n$ 已知，该论文研究的是 $n$ 未知的情形。最终集合大小 $n$ 不定，需要考虑结构自适应扩容，且要维持空间尽可能小。传统最优空间理论在这个设定下不再直接适用。
 
-已有的 Approximate membership data structures 需要集合 $S$ 的大小 $n$ 已知，该论文研究的是 $n$ 未知的情形。最终集合大小 $n$ 不定，需要考虑结构自适应扩容，且要维持空间尽可能小。传统最优空间理论在这个设定下不再直接适用。
-
-% ==================== SECTION 2 ====================
-\section{这个问题为什么重要}
+\subsection{问题为什么重要}
 
 现代计算环境本质上是流式计算：
 \begin{itemize}
     \item 数据随机：无法预知会有多少数据量。
-    \item 突发流量：即使有历史统计平均值作参考，也难免有时出现数据量激增导致 $n$ 的值翻倍。
-    \item 如果数据结构严格要求预先知道 $n$ 的大小，在流量激增的时候要么拒绝服务，要么假阳性率失控。
+    \item 突发流量：即使有历史统计平均值作参考，也难免有时出现数据量激增。
+    \item 如果数据结构严格要求预先知道 $n$ 的大小，在预计偏大时占用大量不必要的空间，预计偏小时假阳性率容易失控。
 \end{itemize}
 
-在大数据流场景（网络监控、数据库缓存、分布式系统）中，集合大小往往无法提前预知。这篇论文解释了为什么简单扩展 Bloom Filter 会浪费空间，并为"空间自适应"的近似成员结构提供了理论指导。
+在大数据流场景（网络监控、数据库缓存、分布式系统）中，集合大小往往无法提前预知。这篇论文解释了为什么简单扩展 Bloom Filter 会浪费空间，并为能自适应空间的近似成员结构提供了理论指导。
 
-% ==================== SECTION 3 ====================
-\section{相关研究}
+\subsection{论文的主要贡献}
 
-\subsection{Bloom filters（布隆过滤器）}
-\begin{itemize}
-    \item 布隆过滤器是一种很经典的数据结构，天然支持动态插入。其空间开销是信息论下界 $n\log(1/\varepsilon)$ 的 $\log(e) \approx 1.44$ 倍。
-    \item 标准的 Bloom 过滤器不支持从集合 $S$ 中删除元素，因为将任意位重置为 0 可能会导致假阴性。
-    \item 为了支持删除查询，可以使用计数布隆过滤器。但这会使空间使用增加 $\Omega(\log\log n)$ 倍。这种删除支持是有条件的：只有在不删除假阳性元素时，数据结构才能正确工作，但根据定义，无法完全避免对假阳性元素的删除。
-    \item Cohen 和 Matias 提出了一种方法，将空间开销降低至 $O(n)$ 位。
-\end{itemize}
+论文在集合大小 $n$ 事先未知的设定下，给出了近似成员查询问题的空间下界和上界，并给出两种有价值的构造。
 
-\subsection{基于字典的近似成员查询}
-\begin{itemize}
-    \item 早在 1978 年，Carter 等人就提出了一种能达到类似结果的技术。他们观察到，维护一个多重集 $h(S)$（其中 $h : [u] \to [n/\varepsilon]$ 是一个通用哈希函数），如果集合 $h(S)$ 的存储空间接近信息论下界 $\log\binom{n/\varepsilon+n}{n}$ 位，那么整体解决方案的空间消耗仅为 $n\log(1/\varepsilon) + O(n)$ 位。
-    \item 如果不需要支持删除操作，只需存储不同的哈希值集合 $h(S)$ 即可。这种动态集合可以被简洁地存储，且所有操作以高概率在 $O(1)$ 时间内完成。如果需要支持动态多重集（即支持删除），可以通过转化为标准成员查询问题来实现，代价是更新操作的时间增大。
-\end{itemize}
-
-\subsection{在线/离线空间需求的差异}
-\begin{itemize}
-    \item 在静态情况下，已经证明能够逼近 $n\log(1/\varepsilon)$ 的空间下界。例如，Dietzfelbinger 和 Pagh 证明了在查询时间为 $\omega(\log(1/\varepsilon))$ 且 $\varepsilon$ 为 2 的整数幂时，空间开销可以控制在 $o(n)$ 项以内；Porat 在常数查询时间的情况下实现了相同的结果；随后 Bellazougui 和 Venturini 进一步消除了对 $\varepsilon$ 的限制，同时维持了常数查询时间。
-    \item 然而，Lovett 和 Porat 证明了这些静态情况下的结果无法直接扩展到允许动态场景：在动态更新下，需要 $\Omega(n/\log(1/\varepsilon))$ 位的额外空间开销。即使在整个插入序列结束前不进行任何查询，该下界依然成立。这意味着，对于以数据流形式给出的键集，仅使用接近静态大小下界的空间来构建近似成员数据结构是不够的。
-\end{itemize}
-
-\subsection{动态空间使用}
-\begin{itemize}
-    \item 当要求空间必须依赖于集合的当前大小时，上界要求更加严格。
-    \item 文献中现有的相关技术通常会导致 $\Omega(\log n)$ 或 $\Omega(\log(1/\varepsilon))$ 的查询时间，以及 $\Omega(n\log n)$ 位的高空间开销。
-    \item 这些数据结构通常采用维护多个近似成员数据结构并逐一查询的策略。如果采用几何级数递增的容量，就需要 $\Omega(\log n)$ 个这样的数据结构。每一个结构对应的假阳性率 $\varepsilon_1, \varepsilon_2, \dots$ 之和必须收敛于目标 $\varepsilon$。例如，在已有的 Scalable Bloom Filter 中让 $\varepsilon_i$ 随 $i$ 呈几何级数递减，会导致 $\varepsilon_i = n^{-\Omega(i)}$，从而产生 $\Omega(n\log n)$ 的空间使用量——渐近上远非最优。
-\end{itemize}
-
-\subsection{动态完美哈希与检索}
-\begin{itemize}
-    \item 在静态情况下，一种实现近似成员查询的方法是存储一个完美哈希函数，将键单射地映射到 $\{1,\dots,n\}$，然后在数组中根据该完美哈希函数为每个键存储 $\log(1/\varepsilon)$ 位的签名。
-    \item 更一般地，动态检索数据结构（如 Bloomier filters）也可以用来构建动态近似成员数据结构。研究表明，在线设置下，这两个问题都需要 $\Theta(n\log\log n)$ 的空间。然而，这些上界具有固定的空间使用量（在常数因子内），因此无法实现本文所获得的结果。
-\end{itemize}
-
-% ==================== SECTION 4 ====================
-\section{主要定理与贡献}
-
-论文在集合大小 $n$ 事先未知的设定下，给出了近似成员查询问题的空间下界和上界，并给出两种有效构造。
-
-\subsection{定理 1.1（下界）}
+\subsubsection{定理 1.1（下界）}
 
 任意针对未知大小集合 $S$、假阳性率 $\varepsilon$ 的近似成员数据结构，在某 $n > u^\delta$ 次插入后，必须使用至少
 \[
@@ -143,7 +110,7 @@ Approximate membership data structures：给定一个可以在线插入元素的
 
 注：条件 $n > u^\delta$ 的意思是 $\delta \in (0,1)$ 为任意小常数，$n$ 与全集大小 $u$ 之间呈多项式关系（如 $n > \sqrt{u}$ 或 $n > u^{0.01}$），排除 $n$ 极小（如 $n = O(\log u)$）的退化情况。需要注意，相比传统已知规模的场景，这里每元素平均开销多出了 $\Omega(\log\log n)$ bits，意味着开销会随着集合规模增长，无法维持常数单元素存储。在实际场景中假阳性率常取一个不太小的常数（如 $\varepsilon = 1/10$），此时下界要求每元素 $\Omega(\log\log n)$ 比特，而不是传统设定中的常数。
 
-\subsection{定理 1.2（上界）}
+\subsubsection{定理 1.2（上界）}
 
 论文给出两种匹配下界的构造，以及构造 2 的去摊销优化版本：
 
@@ -178,7 +145,7 @@ $O\bigl(n\log(1/\varepsilon)$
 \end{tabular}
 \end{center}
 
-\subsection{与 Bloom Filter 的对比}
+\subsubsection{与 Bloom Filter 的对比}
 
 \begin{center}
 \footnotesize
@@ -212,12 +179,52 @@ $O\bigl(n\log(1/\varepsilon)$
 
 下界为 $\Omega(n\log(1/\varepsilon) + n\log\log n)$，上界为 $O(n\log(1/\varepsilon) + n\log\log n)$，两者渐近阶完全一致。说明未知规模带来的 $\log\log n$ 的平均开销是不可避免的，也因此不存在更低阶的数据结构。
 
-% ==================== SECTION 5 ====================
-\section{下界证明思路}
+\subsection{技术的非凡之处}
 
-下界证明用的是压缩论证：把数据结构当成编码工具，如果空间太小，就能用数据结构的状态把插入序列压缩到信息论下界以下，推出矛盾。证明的核心链路是：随机结构转确定性 $\to$ 指数分段 $\to$ 找测度增长最慢的一段 $\to$ 控制重叠元素 $\to$ 构造四段无损编码 $\to$ 化简得下界 $\to$ 参数赋值得主定理。
+\begin{enumerate}
+    \item 揭示了已知 $n$ 和未知 $n$ 之间的超线性空间差距——$\Omega(n\log\log n)$ 是之前未被证明的固有代价。
+    \item 下界和上界紧致匹配，仅差低阶项。
+    \item 构造二同时做到空间逼近下界、查询 $O(1)$ 最坏、插入摊还 $O(1)$，三个维度均达到最优。
+    \item 构造二中 $g_i$ 的 $\log\log u$ 位标签能精确控制翻倍次数，避免了上述过大过小估计引发的问题。
+    \item 支持去摊销化优化能将插入从期望摊还升级到最坏常数，为实时系统提供理论保证。
+\end{enumerate}
 
-\subsection{3.1：随机结构转化为确定性结构}
+\section{预备知识}
+
+\subsection{Word RAM 模型与记号}
+
+全集大小为 $u$，单个元素占一个字，字长 $w = \lceil\log u\rceil$ bits。元素加减、按位布尔运算、任意位数的移位、整数乘法都是单位耗时。这是数据结构上下界证明的通用标准模型。下界证明不关心操作时间，只在意存储空间比特数。
+
+\subsection{$k$ 重独立哈希函数族}
+
+$H: U \to V$ 是 $k$-wise independent 的，如果任取 $k$ 个互不相同的 $x_1, \dots, x_k$ 和任意 $y_1, \dots, y_k \in V$：
+\[
+\Pr_{h \leftarrow H}[h(x_1)=y_1 \wedge \cdots \wedge h(x_k)=y_k] = \frac{1}{|V|^k}
+\]
+弱化版 $k$-wise $\delta$-dependent：$(h(x_1), \dots, h(x_k))$ 与均匀分布的统计距离不超过 $\delta$，允许微小偏差以降低实现开销。
+
+论文中构造 2 只需要 pairwise independent（$k=2$），计算常数时间，仅需 $O(\log u)$ 位随机种子。
+
+\subsection{概率工具}
+
+\begin{itemize}
+    \item \textbf{马尔可夫不等式}：非负 $X \ge 0$，$\Pr[X \ge a] \le \E[X]/a$。引理 3.2 中用来筛选优质随机种子：$\E[\mu(\hat{S}_r)] \le 2\varepsilon$，取 $a = 4\varepsilon$，得 $\Pr[\mu \ge 4\varepsilon] \le 1/2$。
+    \item \textbf{切尔诺夫界}：独立伯努利变量和偏离期望的概率指数衰减，精度远高于马尔可夫。引理 3.4 中，$k = |C_i \cap \hat{S}_{i-1}|$ 期望 $\le 4\varepsilon|C_i|$，取 $(1+\delta)\mu = 9\varepsilon|C_i|$ 得尾概率 $\exp(-|C_i|)$，$|C_i| = n^{\Omega(1)}$ 时趋近于 0。
+    \item \textbf{联合界}：$\Pr[\bigcup_i A_i] \le \sum_i \Pr[A_i]$。构造 1 中用于总假阳性控制（$\sum \varepsilon_i \le \varepsilon$）。
+    \item \textbf{无损编码信息论下界}：$M$ 条互不相同的序列用无损前缀编码，至少需要 $\log_2 M$ bits。合法序列集合规模 $\ge u^n/3$，所以编码总长度必须 $\ge \log(u^n/3)$。用于压缩论证。
+\end{itemize}
+
+\section{空间下界}
+
+\subsection{直觉}
+
+对于精确字典，处理未知 $n$ 很简单：每次插入一个新元素，字典描述从 $S$ 更新到 $S \cup \{x\}$。近似成员结构不能这样做：它维护的是一个超集 $\hat{S}$，其中包含 $S$ 本身和被误判为 Yes 的假阳性元素。插入新元素 $x$ 后，$\hat{S}$ 必须变成更大的 $\hat{S}'$，且 $\hat{S} \subseteq \hat{S}'$。论文的核心发现是：$\hat{S}'$ 必须显著地比 $\hat{S}$ 大，需要加入许多元素。若 $\hat{S}' \setminus \hat{S}$ 太小，就可以利用数据结构的状态把整个序列 $S'$ 压缩编码到信息论下界以下，推出矛盾。
+
+\subsection{思路}
+
+压缩论证：把数据结构当成编码工具，如果空间太小，就能用数据结构的状态把插入序列压缩到信息论下界以下，推出矛盾。证明的核心链路是：随机结构转确定性 $\to$ 指数分段 $\to$ 找测度增长最慢的一段 $\to$ 控制重叠元素 $\to$ 构造四段无损编码 $\to$ 化简得下界 $\to$ 参数赋值得主定理。
+
+\subsection{详细推导}
 
 我们定义几个东西：
 \begin{itemize}
@@ -227,6 +234,8 @@ $O\bigl(n\log(1/\varepsilon)$
     \item 归一化测度 $\mu(\hat{S}_r) = |\hat{S}_r|/u$：判定超集在全集 $U$ 中的占比，等价于随机抽一个元素被判 Yes 的概率。
     \item 合法序列集合 $S_{r,\varepsilon} = \{S \in U^n \mid \mu(\hat{S}_r) \le 4\varepsilon\}$：固定随机种子 $r$ 后，假阳性概率不超过 $4\varepsilon$ 的那些插入序列。
 \end{itemize}
+
+\subsubsection{随机结构转化为确定性结构（引理 3.2）}
 
 \textbf{引理 3.2}：存在随机串 $r^*$，使 $|S_{r^*,\varepsilon}| \ge u^n/2$。
 
@@ -244,7 +253,7 @@ $O\bigl(n\log(1/\varepsilon)$
     \item 全空间 $U^n$ 有 $u^n$ 条插入序列。对任意 $r$，落入 $S_{r,\varepsilon}$ 的序列比例至少 $1/2$。所以存在某个 $r^*$ 使得至少一半的序列满足 $\mu(\hat{S}_{r^*}) \le 4\varepsilon$。
 \end{enumerate}
 
-\subsection{3.2：压缩论证}
+\subsubsection{指数分段与压缩论证（引理 3.3、3.4）}
 
 拿到确定性结构 $B_{r^*}$ 与合法序列集合 $\mathcal{S} = S_{r^*,\varepsilon}$ 后，开始压缩论证。对任意长度为 $n$ 的序列 $S$，做指数分段：
 \begin{itemize}
@@ -256,20 +265,16 @@ $O\bigl(n\log(1/\varepsilon)$
 
 分段的目的：把完整的插入流程拆成指数增长的片段，从中截取一段 $C_i$ 作为编码论证的分析单元，用总测度增量平摊到各段来得到单段增量的上界。
 
-\subsubsection{引理 3.3：找测度增长最慢的一段}
-
-\textbf{命题}：对任意 $S \in \mathcal{S}$，存在 $i$ 满足前缀长度 $n_i \in [\alpha n, n]$，且：
+\textbf{引理 3.3}：对任意 $S \in \mathcal{S}$，存在 $i$ 满足前缀长度 $n_i \in [\alpha n, n]$，且：
 \[
 \mu(\hat{S}_i) - \mu(\hat{S}_{i-1}) \le \frac{4\varepsilon}{\log_\gamma(1/\alpha) - 2}
 \]
 
 证明就是抽屉原理：划定区间上下界 $j_1, j_2$ 保证所有 $i \in [j_1, j_2]$ 对应的 $n_i$ 落在 $(\alpha n, n)$ 内。总测度增量上限 $4\varepsilon$，区间共 $j_2 - j_1 \ge \log_\gamma(1/\alpha) - 2$ 个分段增量，必有一段增量不超过平均值。
 
-\subsubsection{引理 3.4：控制重叠元素}
-
 定义 $k = |C_i \cap \hat{S}_{i-1}|$，$C_i$ 中在插入前就已被判 Yes 的元素数。
 
-\textbf{命题}：满足 $k(S) \le 9\varepsilon|C_i|$ 的序列至少占 $u^n/3$。
+\textbf{引理 3.4}：满足 $k(S) \le 9\varepsilon|C_i|$ 的序列至少占 $u^n/3$。
 
 证明：
 \begin{enumerate}
@@ -279,7 +284,7 @@ $O\bigl(n\log(1/\varepsilon)$
     \item 对所有分段用联合界，结合引理 3.2 的 $|\mathcal{S}| \ge u^n/2$，最终满足 $k \le 9\varepsilon|C_i|$ 的序列至少 $u^n/3$。
 \end{enumerate}
 
-\subsubsection{四段式无损编码}
+\subsubsection{四段编码}
 
 对任意合法序列 $S$，设计一套无损编码，解码器仅靠编码串就能完整还原 $S$：
 
@@ -298,8 +303,6 @@ $O\bigl(n\log(1/\varepsilon)$
 \[
 \text{TotalLen} = \log\log n + (n-c_i)\log u + b_i + (c_i-k)\log(\Delta\mu \cdot u) + k\log(\mu(\hat{S}_i)u) + O(c_i)
 \]
-
-\subsubsection{化简与矛盾}
 
 把 $\log(\mu u)$ 拆成 $\log u + \log \mu$，提取公共 $\log u$ 项：
 \[
@@ -323,17 +326,21 @@ $O\bigl(n\log(1/\varepsilon)$
 \text{TotalLen} \le b_i + \log\log n + n\log u + c_i\bigl(\log\varepsilon - (1-9\varepsilon)\log_\gamma(1/\alpha) + O(1)\bigr)
 \]
 
+\subsubsection{矛盾不等式}
+
 无损编码要求能区分 $|\mathcal{S}| \ge u^n/3$ 条不同序列，编码长度必须 $\ge \log(u^n/3) = n\log u - O(1)$。令上界 $\ge$ 下界：
 \[
 b_i + \log\log n + n\log u + c_i\bigl(\log\varepsilon - (1-9\varepsilon)\log_\gamma(1/\alpha) + O(1)\bigr) \ge n\log u - O(1)
 \]
 
-消去 $n\log u$，移项，$\log\log n$ 吸收进 $c_i$ 的常数项，得单段空间下界：
+消去 $n\log u$，移项，$\log\log n$ 吸收进 $c_i$ 的常数项，得：
+
+\textbf{定理 3.1}：单段空间下界：
 \[
 b_i \ge c_i\left(\log\frac{1}{\varepsilon} + (1-9\varepsilon)\log_\gamma\frac{1}{\alpha} - O(1)\right)
 \]
 
-\subsubsection{完成定理 3.1}
+\subsubsection{定理 3.1 到定理 1.1}
 
 $c_i = \gamma^i$，等比数列求和：
 \[
@@ -346,10 +353,8 @@ $i \to \infty$ 时 $1/\gamma^{i-1} \to 0$，得 $c_i \approx n_i \cdot (\gamma-1
 \beta \ge \left(1 - \frac{1}{\gamma}\right) \cdot \left(\log\frac{1}{\varepsilon} + (1-9\varepsilon)\log_\gamma\frac{1}{\alpha} - \Theta(1)\right)
 \]
 
-\subsubsection{导出主定理 1.1}
-
 \begin{itemize}
-    \item $\alpha = 1$ 时退化为已知规模：令 $\gamma \to \infty$，$\beta \ge (1-o(1))\log(1/\varepsilon)$——和传统下界一致，自洽性没问题。
+    \item $\alpha = 1$ 时退化为已知规模：令 $\gamma \to \infty$，$\beta \ge (1-o(1))\log(1/\varepsilon)$——和传统下界一致。
     \item $\alpha = 1/\sqrt{n}$，$\gamma = 2^{(\log n)^\eta}$（$\eta \in (0,1)$）：
     \[
     \log_\gamma\frac{1}{\alpha} = \log_{2^{(\log n)^\eta}}\sqrt{n} = \frac{\frac{1}{2}\log n}{(\log n)^\eta} = \frac{1}{2}(\log n)^{1-\eta} = \Theta(\log\log n)
@@ -360,7 +365,7 @@ $i \to \infty$ 时 $1/\gamma^{i-1} \to 0$，得 $c_i \approx n_i \cdot (\gamma-1
     \]
 \end{itemize}
 
-\subsubsection{证明链路小结}
+\subsection{证明链路小结}
 
 \begin{enumerate}
     \item 原始随机近似结构 $\to$ 马尔可夫不等式（引理 3.2）$\to$ 固定 $r^*$ 转为确定性结构
@@ -371,76 +376,79 @@ $i \to \infty$ 时 $1/\gamma^{i-1} \to 0$，得 $c_i \approx n_i \cdot (\gamma-1
     \item 代入两组参数 $\to$ 分别得到已知/未知规模空间下界（定理 1.1）
 \end{enumerate}
 
-% ==================== SECTION 6 ====================
-\section{上界构造细节}
+\section{构造一：几何增长数据结构}
 
-\subsection{预备知识}
+\subsection{直觉}
 
-\subsubsection{单位代价 Word RAM 模型}
-全集大小为 $u$，单个元素占一个字，字长 $w = \lceil\log u\rceil$ bits。元素加减、按位布尔运算、任意位数的移位、整数乘法都是单位耗时。这是数据结构上下界证明的通用标准模型。下界证明不关心操作时间，只在意存储空间比特数。
+既然不知道总共要存多少元素，那就每当当前这层满了，就开容量翻倍的新一层。每一块越来越精确，这样总误差就可以控制在常数倍 $\varepsilon$ 附近。
 
-\subsubsection{$k$ 重独立哈希函数族}
+\subsection{思路}
 
-$H: U \to V$ 是 $k$-wise independent 的，如果任取 $k$ 个互不相同的 $x_1, \dots, x_k$ 和任意 $y_1, \dots, y_k \in V$：
-\[
-\Pr_{h \leftarrow H}[h(x_1)=y_1 \wedge \cdots \wedge h(x_k)=y_k] = \frac{1}{|V|^k}
-\]
-弱化版 $k$-wise $\delta$-dependent：$(h(x_1), \dots, h(x_k))$ 与均匀分布的统计距离不超过 $\delta$，允许微小偏差，降低实现开销。
+多级几何扩容过滤器：插入流按 $2^i$ 指数分块，第 $i$ 块 $2^i$ 个元素，由专门 $B_i$ 独立处理，假阳性率 $\varepsilon_i=\Theta(\varepsilon/i^2)$，总假阳性由联合界控制。每块用 Raman-Rao 紧凑字典 + 通用哈希实现。查询遍历全部 $B_i$，任一返回 Yes 就判定存在。空间匹配下界，时间 $O(\log n)$。
 
-论文构造 2 只需要 pairwise independent（$k=2$），计算常数时间，仅需 $O(\log u)$ 位随机种子。
+\subsection{详细设计与推导}
 
-\subsubsection{四个概率工具}
+\subsubsection{$B_i$ 内部设计及已知属性}
 
-\begin{itemize}
-    \item \textbf{马尔可夫不等式}：非负 $X \ge 0$，$\Pr[X \ge a] \le \E[X]/a$。引理 3.2 中用来筛选优质随机种子：$\E[\mu(\hat{S}_r)] \le 2\varepsilon$，取 $a = 4\varepsilon$，得 $\Pr[\mu \ge 4\varepsilon] \le 1/2$。
-    \item \textbf{切尔诺夫界}：独立伯努利变量和偏离期望的概率指数衰减，精度远高于马尔可夫。引理 3.4 中，$k = |C_i \cap \hat{S}_{i-1}|$ 期望 $\le 4\varepsilon|C_i|$，取 $(1+\delta)\mu = 9\varepsilon|C_i|$ 得尾概率 $\exp(-|C_i|)$，$|C_i| = n^{\Omega(1)}$ 时趋近于 0。
-    \item \textbf{联合界}：$\Pr[\bigcup_i A_i] \le \sum_i \Pr[A_i]$。构造 1 中用于多子过滤器总假阳性控制（$\sum \varepsilon_i \le \varepsilon$），引理 3.4 中证明所有分段重叠超标的总概率极小。
-    \item \textbf{无损编码信息论下界}：$M$ 条互不相同的序列用无损前缀编码，至少需要 $\log_2 M$ bits。合法序列集合规模 $\ge u^n/3$，所以编码总长度必须 $\ge \log(u^n/3)$。压缩论证的核心武器。
-\end{itemize}
-
-\subsection{构造 1：几何增长数据结构（热身）}
-
-\subsubsection{思路}
-
-把插入流按指数分块——第 $i$ 块 $2^i$ 个元素，每块由专门的 $B_i$ 处理。共需要约 $\log n$ 个 $B_i$。第 $i$ 个子序列开始时分配并初始化 $B_i$，假阳性率 $\varepsilon_i = \Theta(\varepsilon/i^2)$。查询时逐个问所有 $B_i$，任一返回 Yes 就判定存在。
-
-\subsubsection{$B_i$ 内部设计}
-
-每个 $B_i$ 不是全新发明，而是套用已知的 dictionary-based approximate membership 方法，底层用 Raman and Rao [RR03] 的动态字典：
+每个 $B_i$ 使用 dictionary-based approximate membership 方法，底层用 Raman and Rao [RR03] 的动态字典：
 \begin{itemize}
     \item 选哈希函数 $h: U \to [m]$，$m \approx 2^i / \varepsilon_i$。
     \item 插入 $x$：算 $h(x)$，把 $h(x)$ 存入 Raman-Rao 字典。
     \item 查询 $x$：算 $h(x)$，查字典里有没有。
-    \item Raman-Rao 字典：期望摊还 $O(1)$ 插入，最坏 $O(1)$ 查询，空间 $(1+o(1)) \cdot 2^i \cdot \log(1/\varepsilon_i)$ bits。
+    \item Raman-Rao 字典：期望摊还 $O(1)$ 插入，最坏 $O(1)$ 查询，空间 $(1+o(1)) \cdot 2^i \cdot \log(1/\varepsilon_i)$ bits。其空间来自信息论下界 $B = \lceil\lg\binom{m}{n}\rceil \approx n\log(m/n)$，代入 $m=2^i/\varepsilon_i, n=2^i$ 即得。
 \end{itemize}
 
-\subsubsection{插入和查询}
+\subsubsection{插入、查询与假阳性控制}
 
-\textbf{插入}：将要插入第 $m$ 个元素时，通过 $2^i - 2 < m \le 2^{i+1}-2$ 确定该去哪个 $B_i$。如果是该块第一个元素就新建 $B_i$，否则直接插入。绝大多数插入是直接插入，新建 $B_i$ 的时间被摊销——期望摊还 $O(1)$。
+\textbf{插入}：将要插入第 $m$ 个元素时，通过 $2^i - 2 < m \le 2^{i+1}-2$ 确定该去哪个 $B_i$。如果是该块第一个元素就新建 $B_i$，否则直接插入。新建 $B_i$ 的时间被摊销，期望摊还 $O(1)$。
 
-\textbf{查询}：对当前所有已存在的 $B_1, \dots, B_k$ 逐个查询，任一 Yes 则返回 Yes，全 No 才 No。$k \approx \log n$，总查询 $O(\log n)$。
+\textbf{查询}：对当前所有已存在的 $B_1, \dots, B_k$ 逐个查询，任一 Yes 则返回 Yes。$k \approx \log n$，总查询 $O(\log n)$。
 
-\textbf{假阳性}：由联合界 $\le \sum_{i=1}^{\infty} \varepsilon_i = \Theta(\varepsilon \cdot \pi^2/6) \approx \varepsilon$。
+\textbf{假阳性率}：由联合界，总假阳性率 $\le \sum_{i=1}^{\infty} \varepsilon_i = \Theta(\varepsilon \cdot \pi^2/6) \approx \varepsilon$。
 
-\subsubsection{空间复杂度}
+\subsubsection{空间与时间复杂度}
 
-单个 $B_i$ 空间 $(1+o(1)) \cdot 2^i \cdot \log(1/\varepsilon_i)$。代入 $\varepsilon_i = \Theta(\varepsilon/i^2)$：
+\textbf{定理 4.1}：对任意 $0 < \varepsilon < 1$，存在假阳性率 $\le\varepsilon$ 的未知大小近似成员数据结构，满足：
+\begin{enumerate}
+    \item 插入期望摊还 $O(1)$，$n$ 次插入后查询 $O(\log n)$。
+    \item $n$ 次插入后空间至多 $(1+o(1))n\log(1/\varepsilon) + O(n\log\log n)$ bits。
+\end{enumerate}
+
+证明：单个 $B_i$ 空间 $(1+o(1)) \cdot 2^i \cdot \log(1/\varepsilon_i)$。代入 $\varepsilon_i = \Theta(\varepsilon/i^2)$：
 \[
 \log(1/\varepsilon_i) = \log(1/\varepsilon) + 2\log i + O(1)
 \]
-$i \le \log n$，$\max_i\{\log(1/\varepsilon_i)\} = \log(1/\varepsilon) + O(\log\log n)$。总空间：
+
+求和中，每元素开销不超过最贵的那个，因此总空间：
 \[
-(1+o(1)) \cdot n \cdot \max_i\{\log(1/\varepsilon_i)\} = (1+o(1))n\log(1/\varepsilon) + O(n\log\log n)
+\sum_i (1+o(1)) \cdot 2^i \cdot \log(1/\varepsilon_i) \le (1+o(1)) \cdot n \cdot \max_{1 \le i \le \lceil\log n\rceil}\{\log(1/\varepsilon_i)\}
 \]
-匹配下界。
+$i \le \log n$，取 $i = \log n$ 时 $\log(i^2) = 2\log\log n = O(\log\log n)$，故：
+\[
+\max_i\{\log(1/\varepsilon_i)\} = \log(1/\varepsilon) + O(\log\log n)
+\]
+\[
+\text{总空间} = (1+o(1))n\log(1/\varepsilon) + O(n\log\log n)
+\]
 
-\textbf{优点}：简单直观。\textbf{缺点}：查询 $O(\log n)$，因为不知道元素属于哪个子序列。
+\textbf{优点}：实现简单直观。\textbf{缺点}：查询 $O(\log n)$，因为不知道元素属于哪个子序列。
 
-\subsection{构造 2：常数时间操作}
+% ==================== §5 构造二 ====================
+\section{构造二：常数时间查询}
 
-\subsubsection{核心思路}
+\subsection{直觉}
 
-和构造 1 完全不同的路线——任何时候只维护一个动态字典 $D_i$（精确集合），存储当前已插入元素的某个超集。使用 pairwise independent 哈希 $h: U \to \{0,1\}^\ell$，$\ell \ge \lceil\log(1/\varepsilon)\rceil + \log u + 2$。
+为解决构造 1 的查询需要对所有数据结构逐一查的问题，决定只维护一个字典，但它的"分辨率"逐步提升。同时尝试进一步消除过渡时的双倍空间。
+
+\subsection{思路}
+
+单字典 + 成对独立哈希 + 前缀扩展：任意时刻只有一个活跃字典 $D_i$，元素被哈希为 $(\text{签名 }h_i,\ \text{标签 }g_i)$ 存入。当前字典满时过渡到翻倍后的字典，每次过渡时，旧元素的签名要么吸收 1 位标签位（标签位非空），要么翻倍模糊存储（标签位耗尽）。查询时直接查询当前字典即可。支持桶化优化过渡时空间和进行改造以允许删除。
+
+\subsection{详细设计与推导}
+
+\subsubsection{字典设计与哈希设置}
+
+使用 pairwise independent 哈希 $h: U \to \{0,1\}^\ell$，$\ell \ge \lceil\log(1/\varepsilon)\rceil + \log u + 2$。
 
 同样将插入序列按 $2^i$ 分块。对每个阶段 $i$ 的元素 $x$，在 $D_i$ 中存储 $(h_i(x), g_i(x))$：
 \begin{itemize}
@@ -448,7 +456,7 @@ $i \le \log n$，$\max_i\{\log(1/\varepsilon_i)\} = \log(1/\varepsilon) + O(\log
     \item $g_i(x)$：$h(x)$ 的接下来 $r = \lceil\log\log u\rceil$ 位，不足时以 $\bot$ 填充。
 \end{itemize}
 
-\subsubsection{插入：两种模式}
+\subsubsection{插入、查询与无假阴性}
 
 \textbf{Mode 1（普通插入）}：当前元素不是子序列的第一个。直接把 $(h_i(x), g_i(x))$ 以 $h_i(x)$ 为键插入当前 $D_i$。$O(1)$。
 
@@ -463,68 +471,149 @@ $i \le \log n$，$\max_i\{\log(1/\varepsilon_i)\} = \log(1/\varepsilon) + O(\log
     \item 释放 $D_{i-1}$，然后按 Mode 1 插入当前元素。
 \end{enumerate}
 
-\subsubsection{正确性}
+\textbf{查询}：当前阶段 $i$，用 $h_i(x)$ 查 $D_i$，命中则 Yes，否则 No。查询最坏 $O(1)$。
 
-\textbf{不溢出}：早期子序列（$S_1, \dots, S_{i-r}$）标签耗尽后每个 $S_j$ 元素贡献 $2^{i-j-r}$ 条记录；近期子序列（$S_{i-r+1}, \dots, S_i$）标签尚有剩余，每元素 1 条。总条目 $\le 2^{i+2}$，字典不溢出。
+\textbf{无假阴性}：若 $\alpha_1 = \bot$ 则同时保留 $y0$ 和 $y1$，覆盖了 $h_i(x)$ 所有可能前缀；若 $\alpha_1 \neq \bot$ 则延长 $y\alpha_1$，始终跟随实际哈希值。因此 $x$ 在任意后续阶段都至少有 $(h_i(x), \cdot)$ 在 $D_i$ 中，查询一定命中。
 
-\textbf{无假阴性}：若 $\alpha_1 = \bot$ 则同时保留 $y0$ 和 $y1$，覆盖了 $h_i(x)$ 所有可能前缀。$x$ 在任意后续阶段都至少有 $(h_i(x), \cdot)$ 在 $D_i$ 中，查询一定命中。
+\subsubsection{失败处理与桶化}
 
-\textbf{假阳性 $\le \varepsilon + u^{-c}$}：$D_i$ 中最多 $2^{i+2}$ 个键，pairwise independent 保证 $h_i(x)$ 和已有键碰撞的概率 $\le 2^{i+2} \cdot 2^{-\ell_i} \le \varepsilon$。底层字典失败概率通过重建或把前 $u^\delta$ 个元素合并处理，控制在 $u^{-c}$ 以内。
-
-\subsubsection{查询}
-
-当前阶段 $i$，用 $h_i(x)$ 查 $D_i$，命中则 Yes，否则 No。查询最坏 $O(1)$（高概率）。
-
-\subsubsection{桶化优化}
-
-基本构造中从 $D_i$ 过渡到 $D_{i+1}$ 时两者需同时存在，空间暂时翻倍。用桶化解：
+基本构造中从 $D_i$ 过渡到 $D_{i+1}$ 时两者需同时存在，空间暂时翻倍。用桶化处理：
 \begin{itemize}
     \item 哈希把元素分摊到 $u^{\delta/2}$ 个桶。
     \item 各桶数据结构按字交错存储（interleaved），保证过渡操作至多在一个桶中发生。
-    \item 额外空间只与单个桶大小成比例。
+    \item 于是额外空间只与单个桶大小成比例。
 \end{itemize}
 
-分析单桶：底层 Raman-Rao 空间 $(1+o(1)) \cdot n' \cdot (\log(2^{\ell_i}/2^i) + r)$。代入 $\ell_i - i = \log(1/\varepsilon) + O(1)$，$r = \log\log n + O(1)$：
+\subsubsection{空间复杂度}
+
+\textbf{定理 5.1}：对任意 $0 < \varepsilon < 1$、整数 $u$ 及常数 $c > 1$，存在假阳性率 $\varepsilon + u^{-c}$ 的未知大小近似成员数据结构。对任意 $0 < \delta < 1$ 和 $n > u^\delta$ 次插入，满足：
+\begin{enumerate}
+    \item 假阳性率 $\le \varepsilon + u^{-c}$。
+    \item 空间至多 $(1+o(1))n\log(1/\varepsilon) + O(n\log\log n)$ bits。
+    \item 插入期望摊还 $O(1)$，查询最坏情况 $O(1)$。
+\end{enumerate}
+
+\textbf{空间的证明}：以下对单个桶分析。桶内有 $n$ 个元素（$n > u^\delta$），设当前处于第 $i$ 个子序列期间，即 $2^{i-1} \le n \le 2^i-1$，当前字典为 $D_i$。
+
+将 $D_i$ 中的条目按其来源子序列分为两类：
+
+早期子序列（$S_1, \dots, S_{i-r}$）：标签 $g_i(x)$ 中 $r$ 位已耗尽（$\alpha_1 = \bot$），每次过渡翻倍。每个 $S_j$ 元素贡献 $2^{i-j-r}$ 个条目。总空间：
 \[
-|D_i|_{\text{space}} = (1+o(1))n'\log(1/\varepsilon) + O(n'\log\log n)
+\sum_{j=1}^{i-r} |S_j| \cdot 2^{i-j-r} = \sum_{j=1}^{i-r} 2^{i-r-1}
 \]
-全局空间匹配下界。
+
+近期子序列（$S_{i-r+1}, \dots, S_i$）：标签尚有剩余（$\alpha_1 \neq \bot$），每次过渡仅扩展 1 位不翻倍，每元素恰好贡献 1 条目。总空间：
+\[
+\sum_{j=i-r+1}^{i} 2^j
+\]
+
+总条目数：
+\[
+|D_i| = \sum_{j=1}^{i-r} 2^{i-r-1} + \sum_{j=i-r+1}^{i} 2^j \le (i-r) \cdot 2^{i-r-1} + 2^{i+1} \le 2^{i+2}
+\]
+因此每个桶分配的容量 $2^{i+2}$ 是足够的。
+
+$D_i$ 使用 RR03 紧凑动态字典，存储了 $n$ 个元素。每个元素的形式为 $(\text{key}, \text{sat})$：键是 $\ell_i$ 位签名，来自全集大小 $2^{\ell_i}$；标签 $r$ 位。RR03 的空间保证为 $(1+o(1)) \cdot n \cdot (\log(u/n) + r)$。代入 $u = 2^{\ell_i}$，并以 $2^i$ 近似 $n$：
+\[
+|D_i| \le (1+o(1)) \cdot n \cdot (\log(2^{\ell_i}/2^i) + r) = (1+o(1)) \cdot n \cdot (\ell_i - i + r)
+\]
+代入 $\ell_i = \lceil\log(1/\varepsilon)\rceil + i + 2$ ，即 $\ell_i - i = \log(1/\varepsilon) + O(1)$；代入 $r = \lceil\log\log u\rceil$，即由 $n > u^\delta$ 保证的 $\log\log u = \log\log n + O(1)$。因此：
+\[
+|D_i| \le (1+o(1)) \cdot n \cdot (\log(1/\varepsilon) + r + O(1))
+      = (1+o(1))n\log(1/\varepsilon) + O(n\log\log n)
+\]
+
+\textbf{假阳性率的证明}：$D_i$ 中最多 $2^{i+2}$ 个键。由 pairwise independent 哈希，$h_i(x)$ 与任一已有键碰撞的概率 $\le 2^{i+2} \cdot 2^{-\ell_i}$。代入 $\ell_i = \lceil\log(1/\varepsilon)\rceil + i + 2$：
+\[
+2^{i+2} \cdot 2^{-\ell_i} \le 2^{i+2} \cdot \frac{\varepsilon}{2^{i+2}} = \varepsilon
+\]
+底层动态字典 $D_i$ 有一定失败概率，通过将前 $u^\delta$ 个元素合并到一个字典，联合界保证总失败概率 $\le u^{-c}$。因此假阳性率 $\le \varepsilon + u^{-c}$。
+
+\subsection{扩展：去摊销化与删除支持}
 
 \subsubsection{去摊销化}
 
-不等到子序列第一个元素时一次性初始化 $D_i$，而是把初始化工作均摊到该子序列的 $2^i$ 次插入中。每次插入额外投入常数步工作。代价：不能用桶化，空间从 $(1+o(1))n\log(1/\varepsilon) + O(n\log\log n)$ 升到 $O(n\log(1/\varepsilon) + n\log\log n)$。
+不等到子序列第一个元素时一次性初始化 $D_i$，而是把初始化工作均摊到该子序列的 $2^i$ 次插入中。每次插入额外投入常数步工作。代价是不能用桶化，空间从 $(1+o(1))n\log(1/\varepsilon) + O(n\log\log n)$ 升到 $O(n\log(1/\varepsilon) + n\log\log n)$。
 
-\subsubsection{支持删除（扩展）}
+\subsubsection{支持删除}
 
-近似成员结构无法检测是否删的是假阳性，所以要求用户保证"只删确实在集合中的元素"。方案：两个字典。
+近似成员结构无法检测是否删的是假阳性，需要引入辅助性的精确字典判断。
 \begin{itemize}
     \item 主字典：同原结构，每个条目多一个删除指示位。
-    \item 辅助字典：零假阳性率，存"发现是假阳性"的元素的精确值。
+    \item 辅助字典：存"发现是假阳性"的元素的精确值。
 \end{itemize}
-插入时先检查是不是假阳性，是则放辅助字典，否则正常插入主字典。删除时先查辅助字典，没有则查主字典，标记最小字典序条目为已删除。后台进程清理。
+插入时先检查是不是假阳性，是则放辅助字典，否则正常插入主字典。删除时先查辅助字典，有则清除该条目，没有则查主字典，标记最小字典序条目为已删除。
 
-% ==================== SECTION 7 ====================
-\section{总结与展望}
+\section{相关研究}
 
-\subsection{上下界紧致性}
+\subsection{论文提到的五类相关研究}
 
-下界 $\Omega(n\log(1/\varepsilon) + n\log\log n)$，上界 $O(n\log(1/\varepsilon) + n\log\log n)$，渐近阶完全一致。$\Omega(n\log\log n)$ 是不可消除的固有开销。
+\subsubsection{Bloom filters（布隆过滤器）}
+\begin{itemize}
+    \item 布隆过滤器是一种很经典的数据结构，天然支持动态插入。其空间开销是信息论下界 $n\log(1/\varepsilon)$ 的 $\log(e) \approx 1.44$ 倍。
+    \item 标准的 Bloom 过滤器不支持从集合 $S$ 中删除元素，因为将任意位重置为 0 可能会导致假阴性。
+    \item 为了支持删除查询，可以使用计数布隆过滤器。但这会使空间使用增加 $\Omega(\log\log n)$ 倍。这种删除支持是有条件的：只有在不删除假阳性元素时，数据结构才能正确工作，但根据定义，无法完全避免对假阳性元素的删除。
+    \item Cohen 和 Matias 提出了一种方法，将空间开销降低至 $O(n)$ 位。
+\end{itemize}
 
-在过往方案中（如 Scalable Bloom Filter），为了保证总假阳性 $\le \varepsilon$，每一级子过滤器的假阳性 $\varepsilon_i$ 需要按 $1/i^2$ 衰减，每级都要存独立哈希函数，累加后总空间 $\Omega(n\log n)$，不是最优解。构造 1 同样多级但底层用近最优的 Raman-Rao 字典，空间压到 $O(n\log\log n)$ 附加项。构造 2 更进一步用单字典 + 签名扩展 + 辅助位，维持同等空间的同时做到常数时间查询。
+\subsubsection{基于字典的近似成员查询}
+\begin{itemize}
+    \item 早在 1978 年，Carter 等人就提出了一种能达到类似结果的技术。他们观察到，维护一个多重集 $h(S)$（其中 $h : [u] \to [n/\varepsilon]$ 是一个通用哈希函数），如果集合 $h(S)$ 的存储空间接近信息论下界 $\log\binom{n/\varepsilon+n}{n}$ 位，那么整体解决方案的空间消耗仅为 $n\log(1/\varepsilon) + O(n)$ 位。
+    \item 如果不需要支持删除操作，只需存储不同的哈希值集合 $h(S)$ 即可。这种动态集合可以被简洁地存储，且所有操作以高概率在 $O(1)$ 时间内完成。如果需要支持动态多重集（即支持删除），可以通过转化为标准成员查询问题来实现，代价是更新操作的时间增大。
+\end{itemize}
+
+\subsubsection{在线/离线空间需求的差异}
+\begin{itemize}
+    \item 在静态情况下，已经证明能够逼近 $n\log(1/\varepsilon)$ 的空间下界。例如，Dietzfelbinger 和 Pagh 证明了在查询时间为 $\omega(\log(1/\varepsilon))$ 且 $\varepsilon$ 为 2 的整数幂时，空间开销可以控制在 $o(n)$ 项以内；Porat 在常数查询时间的情况下实现了相同的结果；随后 Bellazougui 和 Venturini 进一步消除了对 $\varepsilon$ 的限制，同时维持了常数查询时间。
+    \item 然而，Lovett 和 Porat 证明了这些静态情况下的结果无法直接扩展到允许动态场景：在动态更新下，需要 $\Omega(n/\log(1/\varepsilon))$ 位的额外空间开销。即使在整个插入序列结束前不进行任何查询，该下界依然成立。这意味着，对于以数据流形式给出的键集，仅使用接近静态大小下界的空间来构建近似成员数据结构是不够的。
+\end{itemize}
+
+\subsubsection{动态空间使用}
+\begin{itemize}
+    \item 当要求空间必须依赖于集合的当前大小时，上界要求更加严格。
+    \item 文献中现有的相关技术通常会导致 $\Omega(\log n)$ 或 $\Omega(\log(1/\varepsilon))$ 的查询时间，以及 $\Omega(n\log n)$ 位的高空间开销。
+    \item 这些数据结构通常采用维护多个近似成员数据结构并逐一查询的策略。如果采用几何级数递增的容量，就需要 $\Omega(\log n)$ 个这样的数据结构。每一个结构对应的假阳性率 $\varepsilon_1, \varepsilon_2, \dots$ 之和必须收敛于目标 $\varepsilon$。例如，在已有的 Scalable Bloom Filter 中让 $\varepsilon_i$ 随 $i$ 呈几何级数递减，会导致 $\varepsilon_i = n^{-\Omega(i)}$，从而产生 $\Omega(n\log n)$ 的空间使用量——渐近上远非最优。
+\end{itemize}
+
+\subsubsection{动态完美哈希与检索}
+\begin{itemize}
+    \item 在静态情况下，一种实现近似成员查询的方法是存储一个完美哈希函数，将键单射地映射到 $\{1,\dots,n\}$，然后在数组中根据该完美哈希函数为每个键存储 $\log(1/\varepsilon)$ 位的签名。
+    \item 更一般地，动态检索数据结构（如 Bloomier filters）也可以用来构建动态近似成员数据结构。研究表明，在线设置下，这两个问题都需要 $\Theta(n\log\log n)$ 的空间。然而，这些上界具有固定的空间使用量（在常数因子内），因此无法实现本文所获得的结果。
+\end{itemize}
+
+\subsection{发表后的新研究}
+
+下列三项后续工作均引用了本文，且均在"集合规模事先未知"这一设定下做了进一步推进。
+
+\subsubsection*{Aleph Filter: To Infinity in Constant Time（Dayan, Bercea, Pagh, PVLDB 2024）}
+
+Aleph Filter 是一个可无限扩展的近似成员过滤器，无论数据增长多少，插入、查询和删除均保持常数时间。若提前知道数据规模上限，其内存与假阳性率可匹敌静态过滤器。该工作在 §7 Related Work 中明确引用了本文的下界，并声明其 Widening 和 Predictive 两种工作模式均达到该下界。合著者 Rasmus Pagh 同时是本文的第一作者，Aleph Filter 可视为对本文理论结果的工程实现。
+
+\subsubsection*{Resizable Retrieval（Kuszmaul et al., 2026）}
+
+该工作回答了 Demaine et al.\ 2006 提出的开放问题：能否将动态检索结构的空间上界从预设容量 $N$ 替换为当前实际大小 $n$。论文给出了肯定答案，并证明了匹配的空间-时间 tradeoff 下界。其关键技术之一——"碰撞风险分摊"——直接延续了本文 [PSW13] 中的技术路线（见论文 §1）。作为推论，该工作还给出了动态过滤器的一个新构造。
+
+\subsubsection*{Dynamic ``Succincter''（Li, Liang, Yu, Zhou, FOCS 2023）}
+
+该工作将 P\v{a}tra\c{s}cu 2008 的静态 Succincter 框架动态化：提出的动态 aB-tree (daB-tree) 仅需 3 bit 冗余，作为应用构造了更新/查询时间均最优的动态完全可索引字典。该工作在参考文献中将本文列为紧凑字典与过滤器领域的背景工作。它与本文属于正交关系——本文解决"未知 $n$"的框架问题，Dynamic Succincter 优化的是底层字典的冗余常数。两者可叠加，但互不替代。
+
+\section{总结与讨论}
+
+\subsection{主要贡献回顾}
+
+本文在动态近似成员查询的"未知 $n$"设定上完成了三项工作。第一，通过压缩论证证明了空间下界 $(1-o(1))n\log(1/\varepsilon)+\Omega(n\log\log n)$，表明每元素的平均存储开销不可能独立于 $n$——这是此前未被严格证明的结论。第二，给出构造一（几何增长过滤器），以多项式衰减的假阳性率序列 $\varepsilon_i=\Theta(\varepsilon/i^2)$ 替代旧方案的指数衰减，将附加空间从 $\Omega(n\log n)$ 压至 $O(n\log\log n)$，代价是查询时间 $O(\log n)$。第三，提出构造二（单字典前缀扩展），用成对独立哈希和 $r=\lceil\log\log u\rceil$ 位辅助标签控制签名翻倍，实现查询 $O(1)$ 最坏情况、插入摊还 $O(1)$、空间同阶的结果；去摊销化将其升级为插入最坏 $O(1)$（空间略增至 $O(n\log(1/\varepsilon)+n\log\log n)$）。
+
+上下界在渐近阶上完全一致（下界 $\Omega$、上界 $O$，差仅低阶项），说明本文下界是紧的，$\Omega(n\log\log n)$ 是不可消除的固有代价。
 
 \subsection{$\log\log n$ 的意义}
 
-\begin{enumerate}
-    \item 证明了已知 $n$ 和未知 $n$ 这两种模型确实存在超线性空间差距。
-    \item $\log\log n$ 本身增长极其缓慢（$n = 2^{64}$ 时 $\log\log n$ 仅为 6），相比旧方案的 $\log n$ 更具优势。
-    \item 首次给出了自适应扩容结构的固有理论存储下界，为工程实现提供了理论证明。
-\end{enumerate}
+从理论角度看，$\Omega(n\log\log n)$ 项确立了"已知 $n$"与"未知 $n$"两种模型之间确实存在超线性空间差距。这个附加开销并不大：$n=2^{64}$ 时 $\log\log n$ 仅为 6，而构造一的旧方案付出的是 $\log n$ 级别（$\approx 64$），改进幅度显著。从工程角度看，本文首次给出了自适应扩容结构的固有存储下界，后续工作（如 Aleph Filter 和 Resizable Retrieval）已在此理论基础上给出了实用性更强的构造。
 
-\subsection{未来方向}
+\subsection{论文指出的未来方向}
 
 \begin{itemize}
     \item 理论：收紧 $\Omega(n\log\log n)$ 附加项的常数因子。
-    \item 实践：构造 1 查询 $O(\log n)$ 较慢，构造 2 隐藏常数较大。期待设计同时满足最优空间和常数时间的实用数据结构，匹配本文空间下界。
+    \item 实践：构造 1 查询 $O(\log n)$ 较慢，构造 2 隐藏常数较大。期待新设计同时满足最优空间和常数时间的实用数据结构，匹配本文所证明的空间下界。
 \end{itemize}
 
 \end{document}
